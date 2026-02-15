@@ -19,7 +19,7 @@ export default function AnnoyingClippy() {
   const [messageCount, setMessageCount] = useState(0);
   const [isMinimized, setIsMinimized] = useState(false);
   const [popupStyle, setPopupStyle] = useState("normal");
-  const [apiKey, setApiKey] = useState("");
+  const [reactionMode, setReactionMode] = useState("ai"); // "ai" or "regex"
   const annoyTimerRef = useRef(null);
 
   const showMessage = useCallback((msg, expr = "sassy", style = "normal") => {
@@ -32,7 +32,7 @@ export default function AnnoyingClippy() {
   }, []);
 
   // Custom hooks
-  const { processTextChange } = useClippyReactions(apiKey, showMessage);
+  const { processTextChange } = useClippyReactions(showMessage, reactionMode);
   const { quizActive, currentQuiz, quizResult, triggerQuiz, handleQuizAnswer } = useQuiz(showMessage);
   useIdleDetection(text, showMessage);
 
@@ -122,7 +122,10 @@ export default function AnnoyingClippy() {
         backdropFilter: "blur(10px)",
         padding: 24,
       }}>
-        <ApiKeyInput apiKey={apiKey} setApiKey={setApiKey} />
+        <ApiKeyInput
+          reactionMode={reactionMode}
+          setReactionMode={setReactionMode}
+        />
         <WritingArea text={text} onTextChange={handleTextChange} />
       </div>
 

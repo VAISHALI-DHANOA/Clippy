@@ -4,7 +4,7 @@ import { EXPRESSIONS } from "../data/quotes.js";
 import { getAIReaction } from "../services/aiService.js";
 import { findMatchingReaction } from "../utils/textAnalysis.js";
 
-export function useClippyReactions(apiKey, showMessage) {
+export function useClippyReactions(showMessage, reactionMode = 'ai') {
   const [aiReacting, setAiReacting] = useState(false);
   const lastTextRef = useRef("");
   const reactionCooldowns = useRef({});
@@ -12,11 +12,11 @@ export function useClippyReactions(apiKey, showMessage) {
   const lastAIReactionTime = useRef(0);
 
   const handleAIReaction = useCallback(async (userText) => {
-    if (aiReacting || !apiKey) return;
+    if (aiReacting) return;
 
     setAiReacting(true);
     try {
-      const reply = await getAIReaction(userText, apiKey);
+      const reply = await getAIReaction(userText);
       if (reply) {
         const randExpr = EXPRESSIONS[Math.floor(Math.random() * EXPRESSIONS.length)];
         showMessage(reply, randExpr, "ai");
@@ -29,7 +29,7 @@ export function useClippyReactions(apiKey, showMessage) {
     } finally {
       setTimeout(() => setAiReacting(false), 1000);
     }
-  }, [aiReacting, apiKey, showMessage]);
+  }, [aiReacting, showMessage]);
 
   const processTextChange = useCallback((newText) => {
     clearTimeout(typingTimerRef.current);
@@ -39,25 +39,26 @@ export function useClippyReactions(apiKey, showMessage) {
       const textLength = newText.length;
       const significantChange = Math.abs(textLength - lastTextRef.current.length) > 30;
 
-      // PURE AI MODE: When API key exists, use ONLY AI reactions
-      if (apiKey && textLength > 20 && !aiReacting) {
+      // Check which mode the user selected
+      if (reactionMode === 'ai' && textLength > 20 && !aiReacting) {
+        // AI MODE: Use AI reactions
         const timeSinceLastAI = now - lastAIReactionTime.current;
         const aiCooldownPassed = timeSinceLastAI > 5000; // 5 seconds between AI reactions
 
         if (aiCooldownPassed) {
-          // Always use AI when available (100% of the time)
+          // Always use AI when in AI mode
           lastAIReactionTime.current = now;
           handleAIReaction(newText);
           lastTextRef.current = newText;
-          return; // Skip all local reactions when API key is present
+          return; // Skip all local reactions in AI mode
         }
-        // During cooldown, don't show any reactions (prevents regex fallback)
+        // During cooldown, don't show any reactions
         lastTextRef.current = newText;
         return;
       }
 
-      // ONLY use regex patterns when NO API key is provided
-      if (!apiKey) {
+      // REGEX MODE: Use pattern-based reactions
+      if (reactionMode === 'regex') {
         const reaction = findMatchingReaction(
           REACTIONS_TO_TEXT,
           newText,
@@ -74,7 +75,7 @@ export function useClippyReactions(apiKey, showMessage) {
 
       lastTextRef.current = newText;
     }, 500); // Even more responsive
-  }, [aiReacting, apiKey, handleAIReaction, showMessage]);
+  }, [aiReacting, handleAIReaction, showMessage, reactionMode]);
 
   return { processTextChange };
 }
