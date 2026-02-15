@@ -1,3 +1,4 @@
+import React from 'react';
 import { BUBBLE_COLORS } from "../styles/animations.js";
 
 export default function SpeechBubble({

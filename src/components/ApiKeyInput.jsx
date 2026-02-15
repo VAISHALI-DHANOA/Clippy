@@ -1,3 +1,5 @@
+import React from 'react';
+
 export default function ApiKeyInput({ apiKey, setApiKey }) {
   return (
     <div style={{
@@ -28,7 +30,7 @@ export default function ApiKeyInput({ apiKey, setApiKey }) {
           }}
         />
         <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, fontStyle: "italic" }}>
-          {apiKey ? "Smart reactions active" : "Using basic reactions only"}
+          {apiKey ? "✨ Smart AI suggestions active" : "Using basic reactions only"}
         </span>
       </div>
     </div>

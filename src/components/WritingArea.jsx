@@ -1,3 +1,4 @@
+import React from 'react';
 import { getWordCount, getCharCount } from "../utils/textAnalysis.js";
 
 export default function WritingArea({ text, onTextChange }) {

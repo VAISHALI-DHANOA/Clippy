@@ -1,3 +1,5 @@
+import React from 'react';
+
 const EYE_VARIANTS = {
   normal: { left: { cx: 36, cy: 28 }, right: { cx: 52, cy: 28 }, size: 3 },
   wide: { left: { cx: 36, cy: 26 }, right: { cx: 52, cy: 26 }, size: 4.5 },

@@ -9,6 +9,7 @@ export function useClippyReactions(apiKey, showMessage) {
   const lastTextRef = useRef("");
   const reactionCooldowns = useRef({});
   const typingTimerRef = useRef(null);
+  const lastAIReactionTime = useRef(0);
 
   const handleAIReaction = useCallback(async (userText) => {
     if (aiReacting || !apiKey) return;
@@ -35,29 +36,44 @@ export function useClippyReactions(apiKey, showMessage) {
 
     typingTimerRef.current = setTimeout(() => {
       const now = Date.now();
+      const textLength = newText.length;
+      const significantChange = Math.abs(textLength - lastTextRef.current.length) > 30;
 
-      // Check for local text reactions first with cooldown
-      const reaction = findMatchingReaction(
-        REACTIONS_TO_TEXT,
-        newText,
-        lastTextRef.current,
-        reactionCooldowns.current
-      );
+      // PURE AI MODE: When API key exists, use ONLY AI reactions
+      if (apiKey && textLength > 20 && !aiReacting) {
+        const timeSinceLastAI = now - lastAIReactionTime.current;
+        const aiCooldownPassed = timeSinceLastAI > 5000; // 5 seconds between AI reactions
 
-      if (reaction) {
-        const idx = REACTIONS_TO_TEXT.indexOf(reaction);
-        reactionCooldowns.current[idx] = now;
-        showMessage(reaction.response, "sassy");
-      } else if (newText.length > 50 && !aiReacting) {
-        // Trigger AI more frequently if API key is set
-        const aiChance = apiKey ? 0.7 : 0;
-        if (Math.random() < aiChance) {
+        if (aiCooldownPassed) {
+          // Always use AI when available (100% of the time)
+          lastAIReactionTime.current = now;
           handleAIReaction(newText);
+          lastTextRef.current = newText;
+          return; // Skip all local reactions when API key is present
+        }
+        // During cooldown, don't show any reactions (prevents regex fallback)
+        lastTextRef.current = newText;
+        return;
+      }
+
+      // ONLY use regex patterns when NO API key is provided
+      if (!apiKey) {
+        const reaction = findMatchingReaction(
+          REACTIONS_TO_TEXT,
+          newText,
+          lastTextRef.current,
+          reactionCooldowns.current
+        );
+
+        if (reaction) {
+          const idx = REACTIONS_TO_TEXT.indexOf(reaction);
+          reactionCooldowns.current[idx] = now;
+          showMessage(reaction.response, "sassy");
         }
       }
 
       lastTextRef.current = newText;
-    }, 800); // Responsive delay
+    }, 500); // Even more responsive
   }, [aiReacting, apiKey, handleAIReaction, showMessage]);
 
   return { processTextChange };
