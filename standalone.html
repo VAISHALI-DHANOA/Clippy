@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📎 Clippy 2.0 - Your Annoying AI Study Buddy</title>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // ===== DATA =====
+    const CLIPPY_QUOTES = [
+      "It looks like you're writing an essay! Would you like me to make it worse?",
+      "I see you stopped typing. Writer's block? Or just existential dread?",
+      "That paragraph is getting pretty long. Are you sure you have a point?",
+      "Hi! I'm Clippy! You can't get rid of me. I've tried.",
+      "Fun fact: the average student checks their phone 96 times a day. Not judging. Okay, judging a little.",
+      "You've been staring at the screen for a while. Blink. BLINK.",
+      "I noticed you deleted that last sentence. Smart move.",
+      "Did you know? Procrastination is just your brain's way of saying 'this is boring.' I agree with your brain.",
+      "Your professor is going to read this. Just letting that sink in.",
+      "I'm not saying your thesis is weak, but it just asked me for a protein shake.",
+      "You misspelled something. I won't tell you what. That's the fun part.",
+      "Quick question: is this assignment due tomorrow? Because it reads like it.",
+      "I believe in you! Just kidding, I'm a paperclip. I don't have beliefs.",
+      "Have you considered adding more citations? Your argument is feeling lonely.",
+      "According to my calculations, you are 73% done. I made that up.",
+    ];
+
+    const IDLE_MESSAGES = [
+      "Hello? Are you still there? I get lonely.",
+      "*taps on screen* Is this thing on?",
+      "I'm going to start singing if you don't type something soon.",
+      "🎵 Never gonna give you up, never gonna let you— oh, you're back!",
+      "I just reorganized your thoughts. They were a mess. Still are, actually.",
+      "While you're away, I've been reading your essay. We need to talk.",
+    ];
+
+    const REACTIONS_TO_TEXT = [
+      { trigger: /\b(however|moreover|furthermore|nevertheless)\b/i, response: "Ooh, fancy transition word! Someone's trying to sound smart. It's working... barely.", cooldown: 30000 },
+      { trigger: /\b(I think|I believe|in my opinion)\b/i, response: "Hot take alert! 🔥 Your professor wants EVIDENCE, not feelings!", cooldown: 25000 },
+      { trigger: /\b(very|really|extremely|totally)\b/i, response: "Intensifier detected! Your writing professor just felt a disturbance in the Force.", cooldown: 35000 },
+      { trigger: /\b(good|nice|great|awesome)\b/i, response: "Adjective game: weak. Try 'resplendent', 'magnificent', or 'not terrible'.", cooldown: 30000 },
+      { trigger: /\b(lol|lmao|haha|omg)\b/i, response: "Is this... is this an academic paper? Because LOL is not a citation format. Yet.", cooldown: 20000 },
+      { trigger: /\b(thesis|argument|claim)\b/i, response: "A thesis! How ambitious. Does it have supporting evidence, or is it more of a vibe?", cooldown: 40000 },
+      { trigger: /\.\.\.+/g, response: "Ellipsis detected... Are you being dramatic... or just unsure... I relate...", cooldown: 25000 },
+      { trigger: /!{2,}/g, response: "Multiple exclamation marks!! The sign of a truly!! unhinged!! mind!!", cooldown: 30000 },
+      { trigger: /\b(sorry|apologize|apologies)\b/i, response: "Why are you apologizing in an essay? This isn't a text to your ex.", cooldown: 35000 },
+      { trigger: /\b(basically|essentially|literally)\b/i, response: "You said 'basically' which basically means you're about to oversimplify. Basically.", cooldown: 25000 },
+      { trigger: /\b(the research shows|studies indicate|according to)\b/i, response: "Oh look, actual citations! I'm genuinely impressed. Still gonna check if you made them up though.", cooldown: 40000 },
+      { trigger: /\b(in conclusion|to conclude|in summary)\b/i, response: "Finally wrapping this up? Or are you pulling the classic fake-out conclusion at 60% through?", cooldown: 35000 },
+      { trigger: /^(The |This |That )/m, response: "Starting another sentence with 'The'? Variety is the spice of life, my friend.", cooldown: 50000 },
+      { trigger: /\b(will discuss|will explore|will examine)\b/i, response: "Will you though? Or is this one of those promises you won't keep, like 'I'll start early next time'?", cooldown: 30000 },
+      { trigger: /\b(firstly|secondly|thirdly)\b/i, response: "Ooh, numbered points! Very organized. Let's see if you remember what 'fourthly' was gonna be.", cooldown: 40000 },
+      { trigger: /\b(significant|important|crucial|critical)\b/i, response: "Everything can't be 'significant'. Pick your battles. This isn't a Marvel movie.", cooldown: 30000 },
+      { trigger: /\b(always|never|everyone|nobody)\b/i, response: "Absolute statements? Bold. Dangerously bold. One counterexample and your whole argument crumbles.", cooldown: 35000 },
+      { trigger: /\?{2,}/g, response: "Multiple question marks??? Are you writing an essay??? Or a panicked text message???", cooldown: 25000 },
+      { trigger: /\b(obviously|clearly|evidently)\b/i, response: "If it were THAT obvious, you wouldn't need to write 10 pages about it, would you?", cooldown: 30000 },
+      { trigger: /\b(\d+)%/i, response: "Statistics! Fancy. Did you cite the source, or are we just vibing with numbers?", cooldown: 35000 },
+      { trigger: /\b(research paper|essay|assignment)\b/i, response: "Self-aware that this is an assignment? Meta. Still needs work though.", cooldown: 45000 },
+      { trigger: /\b(impact|effect|influence)\b/i, response: "Ooh, talking about causation! Make sure you're not confusing correlation and causation. Please.", cooldown: 35000 },
+    ];
+
+    const EXPRESSIONS = ["happy", "sassy", "shocked", "bored", "mischievous", "winking"];
+
+    const QUIZ_QUESTIONS = [
+      { q: "What's the capital of Burkina Faso?", a: "Ouagadougou", options: ["Ouagadougou", "Bamako", "Niamey", "Accra"] },
+      { q: "In what year was the USB flash drive invented?", a: "1999", options: ["1995", "1999", "2002", "2004"] },
+      { q: "What is the smallest bone in the human body?", a: "Stapes", options: ["Stapes", "Femur", "Patella", "Incus"] },
+      { q: "How many hearts does an octopus have?", a: "3", options: ["1", "2", "3", "5"] },
+    ];
+
+    // ===== CLIPPY CHARACTER =====
+    const ClippyCharacter = ({ expression }) => {
+      const eyeVariants = {
+        normal: { left: { cx: 36, cy: 28 }, right: { cx: 52, cy: 28 }, size: 3 },
+        wide: { left: { cx: 36, cy: 26 }, right: { cx: 52, cy: 26 }, size: 4.5 },
+        squint: { left: { cx: 36, cy: 28 }, right: { cx: 52, cy: 28 }, size: 1.5 },
+        looking: { left: { cx: 37, cy: 27 }, right: { cx: 53, cy: 27 }, size: 3 },
+        wink: { left: { cx: 36, cy: 28 }, right: { cx: 52, cy: 28 }, size: 3, winkRight: true },
+      };
+
+      const mouthVariants = {
+        normal: "M 38 38 Q 44 44 50 38",
+        wide: "M 35 38 Q 44 48 53 38",
+        smirk: "M 38 40 Q 44 44 52 37",
+        surprised: "M 40 38 Q 44 44 48 38",
+        flat: "M 38 40 L 50 40",
+      };
+
+      const exprConfig = {
+        happy: { eyes: "normal", mouth: "wide", color: "#4CAF50" },
+        sassy: { eyes: "squint", mouth: "smirk", color: "#FF9800" },
+        shocked: { eyes: "wide", mouth: "surprised", color: "#f44336" },
+        bored: { eyes: "squint", mouth: "flat", color: "#9E9E9E" },
+        mischievous: { eyes: "looking", mouth: "smirk", color: "#9C27B0" },
+        winking: { eyes: "wink", mouth: "wide", color: "#2196F3" },
+      };
+
+      const expr = exprConfig[expression] || exprConfig.happy;
+      const eyes = eyeVariants[expr.eyes];
+      const mouth = mouthVariants[expr.mouth];
+
+      return (
+        <svg viewBox="0 0 88 90" style={{ width: 88, height: 90 }}>
+          <path d="M 44 5 C 20 5 12 20 12 35 L 12 60 C 12 75 25 85 44 85 C 63 85 76 75 76 60 L 76 35 C 76 20 68 5 44 5 Z" fill="none" stroke="#607D8B" strokeWidth="5" strokeLinecap="round" />
+          <path d="M 44 10 C 24 10 17 22 17 35 L 17 58 C 17 72 28 80 44 80 C 60 80 71 72 71 58 L 71 35 C 71 22 64 10 44 10 Z" fill="#CFD8DC" opacity="0.6" />
+          <circle cx={eyes.left.cx} cy={eyes.left.cy} r={eyes.size} fill="#263238" />
+          {eyes.winkRight ? (
+            <line x1={48} y1={eyes.right.cy} x2={56} y2={eyes.right.cy} stroke="#263238" strokeWidth="2.5" strokeLinecap="round" />
+          ) : (
+            <circle cx={eyes.right.cx} cy={eyes.right.cy} r={eyes.size} fill="#263238" />
+          )}
+          <line x1={32} y1={eyes.left.cy - 8} x2={40} y2={eyes.left.cy - 9} stroke="#455A64" strokeWidth="1.8" strokeLinecap="round" />
+          <line x1={48} y1={eyes.right.cy - 9} x2={56} y2={eyes.right.cy - 8} stroke="#455A64" strokeWidth="1.8" strokeLinecap="round" />
+          <path d={mouth} fill="none" stroke="#455A64" strokeWidth="2" strokeLinecap="round" />
+          <circle cx={28} cy={36} r={4} fill={expr.color} opacity="0.2" />
+          <circle cx={60} cy={36} r={4} fill={expr.color} opacity="0.2" />
+          <circle cx={36} cy={27} r={9} fill="none" stroke="#37474F" strokeWidth="1.5" />
+          <circle cx={52} cy={27} r={9} fill="none" stroke="#37474F" strokeWidth="1.5" />
+          <line x1={45} y1={27} x2={43} y2={27} stroke="#37474F" strokeWidth="1.5" />
+        </svg>
+      );
+    };
+
+    // ===== MAIN APP =====
+    const AnnoyingClippy = () => {
+      const [text, setText] = useState("");
+      const [clippyMessage, setClippyMessage] = useState("Hi! I'm Clippy! I'm here to help. You cannot escape me. 📎");
+      const [expression, setExpression] = useState("happy");
+      const [isVisible, setIsVisible] = useState(true);
+      const [isShaking, setIsShaking] = useState(false);
+      const [isBouncing, setIsBouncing] = useState(false);
+      const [messageCount, setMessageCount] = useState(0);
+      const [isMinimized, setIsMinimized] = useState(false);
+      const [popupStyle, setPopupStyle] = useState("normal");
+      const [quizActive, setQuizActive] = useState(false);
+      const [currentQuiz, setCurrentQuiz] = useState(null);
+      const [quizResult, setQuizResult] = useState(null);
+
+      const idleTimerRef = useRef(null);
+      const typingTimerRef = useRef(null);
+      const annoyTimerRef = useRef(null);
+      const lastTextRef = useRef("");
+      const reactionCooldowns = useRef({});
+
+      const showMessage = useCallback((msg, expr = "sassy", style = "normal") => {
+        setClippyMessage(msg);
+        setExpression(expr);
+        setPopupStyle(style);
+        setMessageCount((c) => c + 1);
+        setIsBouncing(true);
+        setTimeout(() => setIsBouncing(false), 600);
+      }, []);
+
+      const triggerQuiz = useCallback(() => {
+        const q = QUIZ_QUESTIONS[Math.floor(Math.random() * QUIZ_QUESTIONS.length)];
+        setCurrentQuiz(q);
+        setQuizActive(true);
+        setQuizResult(null);
+        showMessage("POP QUIZ TIME! 🎓\n" + q.q, "shocked", "quiz");
+      }, [showMessage]);
+
+      const handleQuizAnswer = (answer) => {
+        if (answer === currentQuiz.a) {
+          setQuizResult("correct");
+          showMessage("Lucky guess! 🎉 ...I mean, well done! You may resume your mediocre typing.", "winking", "correct");
+        } else {
+          setQuizResult("wrong");
+          showMessage("WRONG! The answer was \"" + currentQuiz.a + "\". I expected nothing and I'm still disappointed. 😏", "mischievous", "wrong");
+        }
+        setTimeout(() => {
+          setQuizActive(false);
+          setCurrentQuiz(null);
+          setQuizResult(null);
+        }, 4000);
+      };
+
+      useEffect(() => {
+        const resetIdle = () => {
+          clearTimeout(idleTimerRef.current);
+          idleTimerRef.current = setTimeout(() => {
+            const msg = IDLE_MESSAGES[Math.floor(Math.random() * IDLE_MESSAGES.length)];
+            showMessage(msg, "bored");
+          }, 15000);
+        };
+        resetIdle();
+        return () => clearTimeout(idleTimerRef.current);
+      }, [text, showMessage]);
+
+      useEffect(() => {
+        annoyTimerRef.current = setInterval(() => {
+          if (Math.random() < 0.3) {
+            triggerQuiz();
+          } else {
+            const msg = CLIPPY_QUOTES[Math.floor(Math.random() * CLIPPY_QUOTES.length)];
+            const expr = EXPRESSIONS[Math.floor(Math.random() * EXPRESSIONS.length)];
+            showMessage(msg, expr);
+          }
+        }, 25000 + Math.random() * 15000);
+        return () => clearInterval(annoyTimerRef.current);
+      }, [showMessage, triggerQuiz]);
+
+      const handleTextChange = (e) => {
+        const newText = e.target.value;
+        setText(newText);
+
+        clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = setTimeout(() => {
+          const now = Date.now();
+          const reaction = REACTIONS_TO_TEXT.find((r, idx) => {
+            const lastTriggered = reactionCooldowns.current[idx] || 0;
+            const cooldownPassed = now - lastTriggered > (r.cooldown || 30000);
+            if (!cooldownPassed) return false;
+            const matches = newText.match(r.trigger);
+            const prevMatches = lastTextRef.current.match(r.trigger);
+            return matches && (!prevMatches || matches.length > prevMatches.length);
+          });
+
+          if (reaction) {
+            const idx = REACTIONS_TO_TEXT.indexOf(reaction);
+            reactionCooldowns.current[idx] = now;
+            showMessage(reaction.response, "sassy");
+          }
+          lastTextRef.current = newText;
+        }, 800);
+      };
+
+      const handleDismiss = () => {
+        setIsShaking(true);
+        showMessage("You clicked dismiss? That's cute. I don't have a dismiss function. 😈", "mischievous");
+        setTimeout(() => setIsShaking(false), 500);
+      };
+
+      const handleMinimize = () => {
+        if (isMinimized) {
+          setIsMinimized(false);
+          showMessage("Miss me? Of course you did. 💅", "winking");
+        } else {
+          setIsMinimized(true);
+        }
+      };
+
+      const wordCount = text.trim().split(/\\s+/).filter(Boolean).length;
+      const charCount = text.length;
+
+      const bubbleColors = {
+        normal: { bg: "#FFFDE7", border: "#FDD835" },
+        quiz: { bg: "#E8EAF6", border: "#5C6BC0" },
+        correct: { bg: "#E8F5E9", border: "#66BB6A" },
+        wrong: { bg: "#FFEBEE", border: "#EF5350" },
+      }[popupStyle] || { bg: "#FFFDE7", border: "#FDD835" };
+
+      return (
+        <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)", fontFamily: "'Segoe UI', system-ui, sans-serif", display: "flex", flexDirection: "column", alignItems: "center", padding: "30px 20px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, opacity: 0.05, backgroundImage: "linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+
+          <div style={{ textAlign: "center", marginBottom: 30, position: "relative", zIndex: 1 }}>
+            <h1 style={{ fontSize: 36, fontWeight: 800, color: "#fff", textShadow: "0 0 30px rgba(156,39,176,0.5), 0 0 60px rgba(156,39,176,0.2)", margin: 0, letterSpacing: "-0.5px" }}>📎 Clippy 2.0</h1>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, marginTop: 6, fontStyle: "italic" }}>Your uninvited AI study buddy • Now with 200% more unsolicited advice</p>
+          </div>
+
+          <div style={{ width: "100%", maxWidth: 720, position: "relative", zIndex: 1, background: "rgba(255,255,255,0.03)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(10px)", padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, padding: "0 4px" }}>
+              <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, fontFamily: "monospace" }}>📝 essay_final_FINAL_v3_REAL.docx</span>
+              <div style={{ display: "flex", gap: 12 }}>
+                <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>{wordCount} words • {charCount} chars</span>
+              </div>
+            </div>
+
+            <textarea value={text} onChange={handleTextChange} placeholder="Start writing your assignment here... Clippy is watching. Always watching. 👀" style={{ width: "100%", minHeight: 340, padding: 20, fontSize: 15, lineHeight: 1.8, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.3)", color: "#E0E0E0", resize: "vertical", outline: "none", fontFamily: "'Georgia', serif", boxSizing: "border-box", transition: "border-color 0.3s" }} onFocus={(e) => e.target.style.borderColor = "rgba(156,39,176,0.4)"} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+          </div>
+
+          {!isMinimized ? (
+            <div style={{ position: "fixed", bottom: 20, right: 20, zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, animation: isBouncing ? "clippyBounce 0.6s ease" : isShaking ? "clippyShake 0.5s ease" : "clippyFloat 3s ease-in-out infinite" }}>
+              {isVisible && (
+                <div style={{ background: bubbleColors.bg, border: "2px solid " + bubbleColors.border, borderRadius: "16px 16px 16px 4px", padding: "12px 16px", maxWidth: 280, minWidth: 180, boxShadow: "0 4px 20px rgba(0,0,0,0.3), 0 0 15px " + bubbleColors.border + "33", position: "relative", animation: "fadeIn 0.3s ease" }}>
+                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "#37474F", whiteSpace: "pre-line" }}>{clippyMessage}</p>
+
+                  {quizActive && currentQuiz && !quizResult && (
+                    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                      {currentQuiz.options.map((opt) => (
+                        <button key={opt} onClick={() => handleQuizAnswer(opt)} style={{ padding: "6px 10px", fontSize: 12, borderRadius: 8, border: "1px solid #5C6BC0", background: "white", cursor: "pointer", textAlign: "left", transition: "all 0.2s", color: "#37474F" }} onMouseEnter={(e) => { e.target.style.background = "#5C6BC0"; e.target.style.color = "#fff"; }} onMouseLeave={(e) => { e.target.style.background = "white"; e.target.style.color = "#37474F"; }}>{opt}</button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                    <button onClick={handleDismiss} style={{ fontSize: 10, color: "#999", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Dismiss (lol good luck)</button>
+                    <button onClick={handleMinimize} style={{ fontSize: 10, color: "#999", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Minimize</button>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ cursor: "pointer", transition: "transform 0.2s" }} onClick={() => setIsVisible(!isVisible)} onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"} onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}>
+                <ClippyCharacter expression={expression} />
+              </div>
+            </div>
+          ) : (
+            <div onClick={handleMinimize} style={{ position: "fixed", bottom: 20, right: 20, zIndex: 1000, width: 50, height: 50, borderRadius: "50%", background: "linear-gradient(135deg, #7B1FA2, #512DA8)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 15px rgba(123,31,162,0.4)", fontSize: 24, animation: "clippyPulse 2s ease-in-out infinite" }}>📎</div>
+          )}
+
+          {messageCount > 0 && (
+            <div style={{ position: "fixed", bottom: isMinimized ? 60 : 105, right: 20, zIndex: 1001, background: "#f44336", color: "white", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, boxShadow: "0 2px 8px rgba(244,67,54,0.4)" }}>{messageCount > 99 ? "99+" : messageCount}</div>
+          )}
+
+          <style>{`
+            @keyframes clippyFloat { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }
+            @keyframes clippyBounce { 0% { transform: scale(1); } 30% { transform: scale(1.15); } 60% { transform: scale(0.95); } 100% { transform: scale(1); } }
+            @keyframes clippyShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px) rotate(-5deg); } 40% { transform: translateX(8px) rotate(5deg); } 60% { transform: translateX(-5px) rotate(-3deg); } 80% { transform: translateX(5px) rotate(3deg); } }
+            @keyframes clippyPulse { 0%, 100% { transform: scale(1); box-shadow: 0 4px 15px rgba(123,31,162,0.4); } 50% { transform: scale(1.08); box-shadow: 0 4px 25px rgba(123,31,162,0.6); } }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+            textarea::placeholder { color: rgba(255,255,255,0.25); font-style: italic; }
+          `}</style>
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<AnnoyingClippy />);
+  </script>
+</body>
+</html>
