@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import ClippyCharacter from "./ClippyCharacter.jsx";
 import SpeechBubble from "./SpeechBubble.jsx";
-import ApiKeyInput from "./ApiKeyInput.jsx";
+
 import WritingArea from "./WritingArea.jsx";
 import { useClippyReactions } from "../hooks/useClippyReactions.js";
 import { useQuiz } from "../hooks/useQuiz.js";
@@ -21,7 +21,7 @@ export default function AnnoyingClippy() {
   const [messageCount, setMessageCount] = useState(0);
   const [isMinimized, setIsMinimized] = useState(false);
   const [popupStyle, setPopupStyle] = useState("normal");
-  const [reactionMode, setReactionMode] = useState("ai"); // "ai" or "regex"
+  const reactionMode = "ai";
   const [isChatLoading, setIsChatLoading] = useState(false);
   const annoyTimerRef = useRef(null);
 
@@ -156,10 +156,6 @@ export default function AnnoyingClippy() {
           padding: 24,
           minWidth: 0,
         }}>
-          <ApiKeyInput
-            reactionMode={reactionMode}
-            setReactionMode={setReactionMode}
-          />
           <WritingArea
             text={text}
             onTextChange={handleTextChange}
