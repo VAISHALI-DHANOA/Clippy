@@ -187,6 +187,61 @@ app.post('/api/clippy-suggestion', async (req, res) => {
   }
 });
 
+// Spreadsheet AI reaction endpoint
+app.post('/api/clippy-spreadsheet', async (req, res) => {
+  try {
+    const { tableData, selectedCell } = req.body;
+
+    if (!CLAUDE_API_KEY) {
+      return res.status(500).json({ error: 'API key not configured in .env file' });
+    }
+
+    if (!tableData) {
+      return res.status(400).json({ error: 'Missing tableData' });
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        system: `You are Clippy, a helpful but sassy AI data assistant. The user is working in a spreadsheet. You can see their current data. Give ONE specific, actionable suggestion about their data — a formula they could use, a pattern you notice, a chart suggestion, or a data organization tip. Be playful but genuinely useful. Keep it to 1-2 sentences.
+
+Supported formulas the user can type: =SUM(A1:A5), =AVG(A1:A5), =MIN(A1:A5), =MAX(A1:A5), =COUNT(A1:A5), and simple arithmetic like =A1+B1.
+
+Examples of good suggestions:
+- "I see numbers in column B! Try =SUM(B1:B5) to total them up."
+- "Your data in column A looks like it's trending upward — a line chart would show that nicely!"
+- "You've got empty cells in row 3. Fill those in or your AVG formula will be off."
+- "Column C looks like percentages. Want to add =AVG(C1:C8) to see the average?"
+- "That's a lot of data! Try using =MIN and =MAX to find your range."`,
+        messages: [{
+          role: 'user',
+          content: `Here's the current spreadsheet data:\n\n${tableData}\n\n${selectedCell ? `Currently selected cell: ${selectedCell}` : ''}\n\nGive one specific helpful suggestion.`
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return res.status(response.status).json({ error: errorData });
+    }
+
+    const data = await response.json();
+    const reply = data.content?.map((i) => i.text || '').join('') || '';
+
+    res.json({ reply });
+  } catch (error) {
+    console.error('Error in clippy-spreadsheet:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Clippy backend server running on http://localhost:${PORT}`);
   console.log(`🔗 Frontend should call: http://localhost:${PORT}/api/clippy-reaction`);

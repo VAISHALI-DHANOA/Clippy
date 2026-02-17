@@ -1,19 +1,26 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import ClippyCharacter from "./ClippyCharacter.jsx";
 import SpeechBubble from "./SpeechBubble.jsx";
-
 import WritingArea from "./WritingArea.jsx";
+import SpreadsheetArea, { createEmptyGrid, serializeSpreadsheetForAI } from "./SpreadsheetArea.jsx";
 import { useClippyReactions } from "../hooks/useClippyReactions.js";
 import { useQuiz } from "../hooks/useQuiz.js";
 import { useIdleDetection } from "../hooks/useIdleDetection.js";
 import { useTextSuggestion } from "../hooks/useTextSuggestion.js";
+import { useSpreadsheetReactions } from "../hooks/useSpreadsheetReactions.js";
 import { CLIPPY_QUOTES, EXPRESSIONS } from "../data/quotes.js";
 import { ANIMATION_STYLES } from "../styles/animations.js";
 import { getAIChat } from "../services/aiService.js";
 
+const TABS = [
+  { key: "writing", label: "Writing" },
+  { key: "spreadsheet", label: "Spreadsheet" },
+];
+
 export default function AnnoyingClippy() {
+  const [activeTab, setActiveTab] = useState("writing");
   const [text, setText] = useState("");
-  const [clippyMessage, setClippyMessage] = useState("Hi! I'm Clippy! I'm here to help. You cannot escape me. 📎");
+  const [clippyMessage, setClippyMessage] = useState("Hi! I'm Clippy! I'm here to help. You cannot escape me.");
   const [expression, setExpression] = useState("happy");
   const [isVisible, setIsVisible] = useState(true);
   const [isShaking, setIsShaking] = useState(false);
@@ -24,6 +31,10 @@ export default function AnnoyingClippy() {
   const reactionMode = "ai";
   const [isChatLoading, setIsChatLoading] = useState(false);
   const annoyTimerRef = useRef(null);
+
+  // Spreadsheet state
+  const [spreadsheetData, setSpreadsheetData] = useState(() => createEmptyGrid(10, 8));
+  const [selectedCell, setSelectedCell] = useState(null);
 
   const showMessage = useCallback((msg, expr = "sassy", style = "normal") => {
     setClippyMessage(msg);
@@ -39,6 +50,14 @@ export default function AnnoyingClippy() {
   const { quizActive, currentQuiz, quizResult, triggerQuiz, handleQuizAnswer } = useQuiz(showMessage);
   useIdleDetection(text, showMessage);
   const { suggestion, clearSuggestion, acceptSuggestion } = useTextSuggestion(text);
+  const { processDataChange } = useSpreadsheetReactions(showMessage);
+
+  // Trigger spreadsheet AI reactions when data changes
+  useEffect(() => {
+    if (activeTab === "spreadsheet") {
+      processDataChange(spreadsheetData, selectedCell);
+    }
+  }, [spreadsheetData, activeTab, selectedCell, processDataChange]);
 
   // Random annoyance timer — reduced frequency (60-90s)
   useEffect(() => {
@@ -70,14 +89,14 @@ export default function AnnoyingClippy() {
 
   const handleDismiss = () => {
     setIsShaking(true);
-    showMessage("You clicked dismiss? That's cute. I don't have a dismiss function. 😈", "mischievous");
+    showMessage("You clicked dismiss? That's cute. I don't have a dismiss function.", "mischievous");
     setTimeout(() => setIsShaking(false), 500);
   };
 
   const handleMinimize = () => {
     if (isMinimized) {
       setIsMinimized(false);
-      showMessage("Miss me? Of course you did. 💅", "winking");
+      showMessage("Miss me? Of course you did.", "winking");
     } else {
       setIsMinimized(true);
     }
@@ -87,12 +106,18 @@ export default function AnnoyingClippy() {
     if (!userMessage.trim() || isChatLoading) return;
     setIsChatLoading(true);
     setExpression("happy");
-    setClippyMessage("Hmm, let me think... 🤔");
+    setClippyMessage("Hmm, let me think...");
+
+    // Send context based on active tab
+    const context = activeTab === "writing"
+      ? text
+      : "SPREADSHEET DATA:\n" + serializeSpreadsheetForAI(spreadsheetData);
+
     try {
-      const reply = await getAIChat(text, userMessage);
+      const reply = await getAIChat(context, userMessage);
       showMessage(reply || "I got nothing. Impressive.", "sassy", "ai");
     } catch {
-      showMessage("I tried to think but my brain buffered. Try again! 😅", "shocked");
+      showMessage("I tried to think but my brain buffered. Try again!", "shocked");
     } finally {
       setIsChatLoading(false);
     }
@@ -120,7 +145,7 @@ export default function AnnoyingClippy() {
       }} />
 
       {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: 30, position: "relative", zIndex: 1 }}>
+      <div style={{ textAlign: "center", marginBottom: 20, position: "relative", zIndex: 1 }}>
         <h1 style={{
           fontSize: 36,
           fontWeight: 800,
@@ -136,7 +161,44 @@ export default function AnnoyingClippy() {
         </p>
       </div>
 
-      {/* Main content row: writing area + Clippy side panel */}
+      {/* Tab bar */}
+      <div style={{
+        display: "flex",
+        gap: 0,
+        marginBottom: 20,
+        position: "relative",
+        zIndex: 1,
+      }}>
+        {TABS.map((tab, i) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              padding: "10px 28px",
+              fontSize: 14,
+              fontWeight: 600,
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderBottom: activeTab === tab.key
+                ? "2px solid #9C27B0"
+                : "1px solid rgba(255,255,255,0.1)",
+              background: activeTab === tab.key
+                ? "rgba(156,39,176,0.15)"
+                : "rgba(255,255,255,0.03)",
+              color: activeTab === tab.key
+                ? "#CE93D8"
+                : "rgba(255,255,255,0.4)",
+              cursor: "pointer",
+              borderRadius: i === 0 ? "10px 0 0 0" : i === TABS.length - 1 ? "0 10px 0 0" : 0,
+              backdropFilter: "blur(10px)",
+              transition: "all 0.2s",
+            }}
+          >
+            {tab.key === "writing" ? "📝 " : "📊 "}{tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Main content row: content area + Clippy side panel */}
       <div style={{
         width: "100%",
         maxWidth: 1060,
@@ -146,7 +208,7 @@ export default function AnnoyingClippy() {
         position: "relative",
         zIndex: 1,
       }}>
-        {/* Writing area */}
+        {/* Content area */}
         <div style={{
           flex: 1,
           background: "rgba(255,255,255,0.03)",
@@ -156,13 +218,22 @@ export default function AnnoyingClippy() {
           padding: 24,
           minWidth: 0,
         }}>
-          <WritingArea
-            text={text}
-            onTextChange={handleTextChange}
-            suggestion={suggestion}
-            onAcceptSuggestion={handleAcceptSuggestion}
-            onClearSuggestion={clearSuggestion}
-          />
+          {activeTab === "writing" ? (
+            <WritingArea
+              text={text}
+              onTextChange={handleTextChange}
+              suggestion={suggestion}
+              onAcceptSuggestion={handleAcceptSuggestion}
+              onClearSuggestion={clearSuggestion}
+            />
+          ) : (
+            <SpreadsheetArea
+              data={spreadsheetData}
+              onDataChange={setSpreadsheetData}
+              selectedCell={selectedCell}
+              onCellSelect={setSelectedCell}
+            />
+          )}
         </div>
 
         {/* Clippy side panel */}
