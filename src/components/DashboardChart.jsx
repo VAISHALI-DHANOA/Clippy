@@ -38,11 +38,20 @@ const colBtn = (active, color) => ({
   textAlign: "center",
 });
 
-function getColNames(count) {
+function getColLetters(count) {
   return Array.from({ length: count }, (_, i) => String.fromCharCode(65 + i));
 }
 
-/* Extract data for each chart type from a cell grid */
+/* Read header names from the first row of data */
+function getHeaderNames(data) {
+  if (!data || data.length === 0) return [];
+  return data[0].map((cell) => {
+    const v = cell.value;
+    return v !== null && v !== undefined ? String(v) : "";
+  });
+}
+
+/* Extract data for each chart type from a cell grid (header row already stripped) */
 function extractForChart(config, data) {
   if (!data || data.length === 0 || data[0].length === 0) return null;
 
@@ -135,7 +144,6 @@ function parseCustomData(text) {
 
 export default function DashboardChart({ config, index, spreadsheetData, numCols, onUpdate, onRemove, highlightedRows, onHighlight, onClearHighlight }) {
   const [customText, setCustomText] = useState("");
-  const colNames = getColNames(numCols);
   const ct = config.chartType;
 
   const handleTypeChange = (e) => {
@@ -160,10 +168,15 @@ export default function DashboardChart({ config, index, spreadsheetData, numCols
     onUpdate(index, { ...config, dataCols: cols });
   };
 
-  const sourceData = config.source === "custom" ? parseCustomData(customText) : spreadsheetData;
-  const chartData = extractForChart(config, sourceData);
-  const srcCols = sourceData ? sourceData[0].length : numCols;
-  const srcColNames = getColNames(srcCols);
+  const fullData = config.source === "custom" ? parseCustomData(customText) : spreadsheetData;
+  // First row is header labels; remaining rows are data
+  const headerNames = fullData ? getHeaderNames(fullData) : [];
+  const dataRows = fullData && fullData.length > 1 ? fullData.slice(1) : null;
+  const chartData = extractForChart(config, dataRows);
+  const srcCols = fullData && fullData[0] ? fullData[0].length : numCols;
+  // Show header name if non-empty, otherwise fall back to column letter
+  const colLetters = getColLetters(srcCols);
+  const srcColNames = headerNames.map((h, i) => h || colLetters[i] || `${i}`);
 
   return (
     <div style={{
