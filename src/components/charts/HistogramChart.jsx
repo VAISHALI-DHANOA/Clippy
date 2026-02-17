@@ -1,7 +1,7 @@
 import { COLORS } from "../DataChart.jsx";
 
-export default function HistogramChart({ data, binCount = 10, width = 280, height = 220, color, highlightedRows, onHighlight, onClearHighlight }) {
-  const pad = { top: 20, right: 20, bottom: 36, left: 50 };
+export default function HistogramChart({ data, binCount = 10, width = 280, height = 220, color, highlightedRows, onHighlight, onClearHighlight, xLabel, yLabel }) {
+  const pad = { top: 20, right: 20, bottom: xLabel ? 48 : 36, left: yLabel ? 62 : 50 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
   const c = color || COLORS[1];
@@ -69,12 +69,25 @@ export default function HistogramChart({ data, binCount = 10, width = 280, heigh
       {bins.map((_, i) => {
         if (i % Math.max(1, Math.floor(binCount / 5)) !== 0 && i !== binCount - 1) return null;
         return (
-          <text key={`l-${i}`} x={pad.left + i * barW + barW / 2} y={height - 6}
+          <text key={`l-${i}`} x={pad.left + i * barW + barW / 2} y={pad.top + chartH + 16}
             textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize={9}>
             {Math.round(min + i * binW)}
           </text>
         );
       })}
+      {xLabel && (
+        <text x={pad.left + chartW / 2} y={height - 4} textAnchor="middle"
+          fill="rgba(255,255,255,0.5)" fontSize={10} fontWeight={600}>
+          {xLabel}
+        </text>
+      )}
+      {yLabel && (
+        <text x={12} y={pad.top + chartH / 2} textAnchor="middle"
+          fill="rgba(255,255,255,0.5)" fontSize={10} fontWeight={600}
+          transform={`rotate(-90, 12, ${pad.top + chartH / 2})`}>
+          {yLabel}
+        </text>
+      )}
     </svg>
   );
 }

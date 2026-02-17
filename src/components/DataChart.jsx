@@ -27,8 +27,8 @@ export function extractChartData(data, labelCol, dataCols) {
   return { labels, series };
 }
 
-export function BarChart({ labels, series, width, height, highlightedRows, onHighlight, onClearHighlight }) {
-  const pad = { top: 20, right: 20, bottom: 36, left: 50 };
+export function BarChart({ labels, series, width, height, highlightedRows, onHighlight, onClearHighlight, xLabel, yLabel }) {
+  const pad = { top: 20, right: 20, bottom: xLabel ? 48 : 36, left: yLabel ? 62 : 50 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
   const allValues = series.flatMap((s) => s.values);
@@ -74,17 +74,30 @@ export function BarChart({ labels, series, width, height, highlightedRows, onHig
       {labels.map((label, i) => (
         <text key={i}
           x={pad.left + i * barGroupW + barGroupW / 2}
-          y={height - 6} textAnchor="middle"
+          y={pad.top + chartH + 16} textAnchor="middle"
           fill="rgba(255,255,255,0.4)" fontSize={10}>
           {String(label).slice(0, 8)}
         </text>
       ))}
+      {xLabel && (
+        <text x={pad.left + chartW / 2} y={height - 4} textAnchor="middle"
+          fill="rgba(255,255,255,0.5)" fontSize={10} fontWeight={600}>
+          {xLabel}
+        </text>
+      )}
+      {yLabel && (
+        <text x={12} y={pad.top + chartH / 2} textAnchor="middle"
+          fill="rgba(255,255,255,0.5)" fontSize={10} fontWeight={600}
+          transform={`rotate(-90, 12, ${pad.top + chartH / 2})`}>
+          {yLabel}
+        </text>
+      )}
     </svg>
   );
 }
 
-export function LineChart({ labels, series, width, height, highlightedRows, onHighlight, onClearHighlight }) {
-  const pad = { top: 20, right: 20, bottom: 36, left: 50 };
+export function LineChart({ labels, series, width, height, highlightedRows, onHighlight, onClearHighlight, xLabel, yLabel }) {
+  const pad = { top: 20, right: 20, bottom: xLabel ? 48 : 36, left: yLabel ? 62 : 50 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
   const allValues = series.flatMap((s) => s.values);
@@ -140,11 +153,24 @@ export function LineChart({ labels, series, width, height, highlightedRows, onHi
       {labels.map((label, i) => (
         <text key={i}
           x={pad.left + i * step}
-          y={height - 6} textAnchor="middle"
+          y={pad.top + chartH + 16} textAnchor="middle"
           fill="rgba(255,255,255,0.4)" fontSize={10}>
           {String(label).slice(0, 8)}
         </text>
       ))}
+      {xLabel && (
+        <text x={pad.left + chartW / 2} y={height - 4} textAnchor="middle"
+          fill="rgba(255,255,255,0.5)" fontSize={10} fontWeight={600}>
+          {xLabel}
+        </text>
+      )}
+      {yLabel && (
+        <text x={12} y={pad.top + chartH / 2} textAnchor="middle"
+          fill="rgba(255,255,255,0.5)" fontSize={10} fontWeight={600}
+          transform={`rotate(-90, 12, ${pad.top + chartH / 2})`}>
+          {yLabel}
+        </text>
+      )}
     </svg>
   );
 }

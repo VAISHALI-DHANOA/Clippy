@@ -1,7 +1,7 @@
 import { COLORS } from "../DataChart.jsx";
 
-export default function ScatterChart({ data, width = 280, height = 220, color, highlightedRows, onHighlight, onClearHighlight }) {
-  const pad = { top: 20, right: 20, bottom: 36, left: 50 };
+export default function ScatterChart({ data, width = 280, height = 220, color, highlightedRows, onHighlight, onClearHighlight, xLabel, yLabel }) {
+  const pad = { top: 20, right: 20, bottom: xLabel ? 48 : 36, left: yLabel ? 62 : 50 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
   const c = color || COLORS[0];
@@ -35,10 +35,23 @@ export default function ScatterChart({ data, width = 280, height = 220, color, h
         );
       })}
       {[0, 0.25, 0.5, 0.75, 1].map((f) => (
-        <text key={`x-${f}`} x={pad.left + chartW * f} y={height - 6} textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize={10}>
+        <text key={`x-${f}`} x={pad.left + chartW * f} y={pad.top + chartH + 16} textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize={10}>
           {Math.round(minX + rangeX * f)}
         </text>
       ))}
+      {xLabel && (
+        <text x={pad.left + chartW / 2} y={height - 4} textAnchor="middle"
+          fill="rgba(255,255,255,0.5)" fontSize={10} fontWeight={600}>
+          {xLabel}
+        </text>
+      )}
+      {yLabel && (
+        <text x={12} y={pad.top + chartH / 2} textAnchor="middle"
+          fill="rgba(255,255,255,0.5)" fontSize={10} fontWeight={600}
+          transform={`rotate(-90, 12, ${pad.top + chartH / 2})`}>
+          {yLabel}
+        </text>
+      )}
       {data.x.map((xVal, i) => {
         const isHl = hasHl && highlightedRows.has(i);
         return (
