@@ -242,6 +242,59 @@ Examples of good suggestions:
   }
 });
 
+// Cell autofill suggestion endpoint
+app.post('/api/clippy-cell-suggest', async (req, res) => {
+  try {
+    const { tableData, cellRef, currentValue } = req.body;
+
+    if (!CLAUDE_API_KEY) {
+      return res.status(500).json({ error: 'API key not configured in .env file' });
+    }
+
+    if (!tableData || !cellRef) {
+      return res.status(400).json({ error: 'Missing tableData or cellRef' });
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 30,
+        system: `You are a spreadsheet autofill assistant. Given a spreadsheet and a target cell, predict the most likely value for that cell based on patterns in surrounding data (column patterns, sequences, formulas, labels, etc.).
+
+Rules:
+- Output ONLY the suggested value — no explanations, no quotes, no prefix.
+- If the column has numbers increasing by a pattern, continue the pattern.
+- If the column has labels/categories, suggest the next likely label.
+- If a formula would make sense (like a SUM row at the bottom), suggest the formula (e.g. =SUM(A1:A5)).
+- If there's no clear pattern, output exactly: NONE
+- Keep it to a single value or short formula.`,
+        messages: [{
+          role: 'user',
+          content: `Spreadsheet data:\n${tableData}\n\nTarget cell: ${cellRef}\n${currentValue ? `Current value being typed: ${currentValue}` : 'Cell is empty.'}\n\nSuggest a value:`
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'API error' });
+    }
+
+    const data = await response.json();
+    const suggestion = (data.content?.map((i) => i.text || '').join('') || '').trim();
+
+    res.json({ suggestion: suggestion === 'NONE' ? '' : suggestion });
+  } catch (error) {
+    console.error('Error in clippy-cell-suggest:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Clippy backend server running on http://localhost:${PORT}`);
   console.log(`🔗 Frontend should call: http://localhost:${PORT}/api/clippy-reaction`);

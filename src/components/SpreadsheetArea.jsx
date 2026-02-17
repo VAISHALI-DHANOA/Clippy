@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import SpreadsheetToolbar from "./SpreadsheetToolbar.jsx";
 import DataChart from "./DataChart.jsx";
+import { getCellSuggestion } from "../services/aiService.js";
 
 // --- Cell addressing helpers ---
 
@@ -33,7 +34,6 @@ function getRangeValues(data, start, end) {
 }
 
 function evaluateFormula(expr, data) {
-  // Function calls: SUM, AVG, AVERAGE, MIN, MAX, COUNT
   const funcMatch = expr.match(
     /^(SUM|AVG|AVERAGE|MIN|MAX|COUNT)\(([A-Z]\d+):([A-Z]\d+)\)$/i
   );
@@ -62,7 +62,6 @@ function evaluateFormula(expr, data) {
     }
   }
 
-  // Simple arithmetic: replace cell refs with values
   const arithmeticExpr = expr.replace(/[A-Z]\d+/gi, (ref) => {
     const { row, col } = parseCellRef(ref.toUpperCase());
     if (row < 0 || row >= data.length || col < 0 || col >= data[0].length) {
@@ -188,6 +187,8 @@ const cellInputStyle = {
   fontFamily: "monospace",
   textAlign: "right",
   outline: "none",
+  position: "relative",
+  zIndex: 1,
 };
 
 // --- Component ---
@@ -202,15 +203,52 @@ export default function SpreadsheetArea({
   const [editValue, setEditValue] = useState("");
   const [showChart, setShowChart] = useState(false);
   const [chartType, setChartType] = useState("bar");
+  const [cellSuggestion, setCellSuggestion] = useState("");
+  const [chartLabelCol, setChartLabelCol] = useState(null);
+  const [chartDataCols, setChartDataCols] = useState([]);
   const tableRef = useRef(null);
+  const suggestionTimerRef = useRef(null);
+  const lastSuggestRequestRef = useRef("");
 
   const columns = Array.from({ length: data[0].length }, (_, i) =>
     String.fromCharCode(65 + i)
   );
 
+  // Fetch cell suggestion when editing pauses
+  useEffect(() => {
+    clearTimeout(suggestionTimerRef.current);
+    setCellSuggestion("");
+
+    if (!editingCell) return;
+
+    // Need at least some data in the grid to give context
+    const hasData = data.flat().some((c) => c.raw.trim() !== "");
+    if (!hasData) return;
+
+    const ref = toCellRef(editingCell.row, editingCell.col);
+    const requestKey = `${ref}:${editValue}`;
+    if (requestKey === lastSuggestRequestRef.current) return;
+
+    suggestionTimerRef.current = setTimeout(async () => {
+      lastSuggestRequestRef.current = requestKey;
+      try {
+        const tableText = serializeSpreadsheetForAI(data);
+        const suggestion = await getCellSuggestion(tableText, ref, editValue);
+        if (suggestion && suggestion !== editValue) {
+          setCellSuggestion(suggestion);
+        }
+      } catch {
+        // ignore
+      }
+    }, 800);
+
+    return () => clearTimeout(suggestionTimerRef.current);
+  }, [editingCell, editValue, data]);
+
   const commitEdit = useCallback(
     (row, col) => {
       setEditingCell(null);
+      setCellSuggestion("");
       const newData = data.map((r) => r.map((c) => ({ ...c })));
       newData[row][col].raw = editValue;
       recalculate(newData);
@@ -219,38 +257,80 @@ export default function SpreadsheetArea({
     [data, editValue, onDataChange]
   );
 
+  // Single click: select + enter edit mode immediately
   const handleCellClick = (row, col) => {
     if (editingCell && (editingCell.row !== row || editingCell.col !== col)) {
       commitEdit(editingCell.row, editingCell.col);
     }
     onCellSelect({ row, col });
-  };
-
-  const handleCellDoubleClick = (row, col) => {
     setEditingCell({ row, col });
     setEditValue(data[row][col].raw);
+    setCellSuggestion("");
   };
 
   const handleEditKeyDown = (e, row, col) => {
-    if (e.key === "Enter") {
+    if (e.key === "Tab") {
       e.preventDefault();
-      commitEdit(row, col);
-      const nextRow = Math.min(row + 1, data.length - 1);
-      onCellSelect({ row: nextRow, col });
-    } else if (e.key === "Tab") {
-      e.preventDefault();
-      commitEdit(row, col);
+      if (cellSuggestion) {
+        // Accept suggestion and commit
+        const newData = data.map((r) => r.map((c) => ({ ...c })));
+        newData[row][col].raw = cellSuggestion;
+        recalculate(newData);
+        onDataChange(newData);
+        setEditingCell(null);
+        setCellSuggestion("");
+      } else {
+        commitEdit(row, col);
+      }
+      // Move to next cell and auto-edit
       const nextCol = col + 1 < data[0].length ? col + 1 : 0;
       const nextRow =
         col + 1 < data[0].length ? row : Math.min(row + 1, data.length - 1);
       onCellSelect({ row: nextRow, col: nextCol });
+      setEditingCell({ row: nextRow, col: nextCol });
+      setEditValue(data[nextRow][nextCol].raw);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (cellSuggestion) {
+        const newData = data.map((r) => r.map((c) => ({ ...c })));
+        newData[row][col].raw = cellSuggestion;
+        recalculate(newData);
+        onDataChange(newData);
+        setEditingCell(null);
+        setCellSuggestion("");
+      } else {
+        commitEdit(row, col);
+      }
+      // Move down and auto-edit
+      const nextRow = Math.min(row + 1, data.length - 1);
+      onCellSelect({ row: nextRow, col });
+      setEditingCell({ row: nextRow, col });
+      setEditValue(data[nextRow][col].raw);
     } else if (e.key === "Escape") {
       setEditingCell(null);
       setEditValue("");
+      setCellSuggestion("");
+    } else if (e.key === "ArrowUp" && !editValue) {
+      e.preventDefault();
+      commitEdit(row, col);
+      const nextRow = Math.max(row - 1, 0);
+      onCellSelect({ row: nextRow, col });
+      setEditingCell({ row: nextRow, col });
+      setEditValue(data[nextRow][col].raw);
+    } else if (e.key === "ArrowDown" && !editValue) {
+      e.preventDefault();
+      commitEdit(row, col);
+      const nextRow = Math.min(row + 1, data.length - 1);
+      onCellSelect({ row: nextRow, col });
+      setEditingCell({ row: nextRow, col });
+      setEditValue(data[nextRow][col].raw);
+    } else {
+      // Typing clears the current suggestion
+      if (cellSuggestion) setCellSuggestion("");
     }
   };
 
-  // Keyboard nav when not editing
+  // Keyboard nav when table has focus but no cell is editing
   const handleTableKeyDown = useCallback(
     (e) => {
       if (editingCell) return;
@@ -281,12 +361,88 @@ export default function SpreadsheetArea({
         recalculate(newData);
         onDataChange(newData);
       } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-        // Start typing: replace cell content
         setEditingCell({ row, col });
         setEditValue(e.key);
       }
     },
     [editingCell, selectedCell, data, onCellSelect, onDataChange]
+  );
+
+  // Paste from external spreadsheet (tab-separated rows)
+  const handlePaste = useCallback(
+    (e) => {
+      const anchor = editingCell || selectedCell;
+      if (!anchor) return;
+
+      const clipText = e.clipboardData.getData("text/plain");
+      if (!clipText) return;
+
+      // Parse rows (newline-separated) and cols (tab-separated)
+      const pasteRows = clipText
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .split("\n")
+        .filter((line, i, arr) => !(i === arr.length - 1 && line === ""));
+      const pasteGrid = pasteRows.map((row) => row.split("\t"));
+
+      // If it's a single value and we're editing, let the input handle it
+      if (pasteGrid.length === 1 && pasteGrid[0].length === 1 && editingCell) {
+        return; // let default paste into input happen
+      }
+
+      e.preventDefault();
+
+      // Expand grid if paste extends beyond current bounds
+      const neededRows = anchor.row + pasteGrid.length;
+      const neededCols = anchor.col + Math.max(...pasteGrid.map((r) => r.length));
+
+      let newData = data.map((r) => r.map((c) => ({ ...c })));
+
+      // Add rows if needed
+      while (newData.length < neededRows) {
+        newData.push(
+          Array.from({ length: newData[0].length }, () => ({
+            raw: "",
+            value: null,
+            error: null,
+          }))
+        );
+      }
+
+      // Add columns if needed
+      if (neededCols > newData[0].length) {
+        const extraCols = neededCols - newData[0].length;
+        newData = newData.map((row) => [
+          ...row,
+          ...Array.from({ length: extraCols }, () => ({
+            raw: "",
+            value: null,
+            error: null,
+          })),
+        ]);
+      }
+
+      // Fill in pasted values
+      for (let r = 0; r < pasteGrid.length; r++) {
+        for (let c = 0; c < pasteGrid[r].length; c++) {
+          const targetRow = anchor.row + r;
+          const targetCol = anchor.col + c;
+          if (targetRow < newData.length && targetCol < newData[0].length) {
+            newData[targetRow][targetCol].raw = pasteGrid[r][c];
+          }
+        }
+      }
+
+      recalculate(newData);
+      onDataChange(newData);
+
+      // Exit edit mode if we were editing
+      if (editingCell) {
+        setEditingCell(null);
+        setCellSuggestion("");
+      }
+    },
+    [editingCell, selectedCell, data, onDataChange]
   );
 
   const addRow = () => {
@@ -331,6 +487,19 @@ export default function SpreadsheetArea({
         onChartTypeChange={setChartType}
       />
 
+      {/* Suggestion hint */}
+      {cellSuggestion && editingCell && (
+        <div style={{
+          padding: "4px 10px",
+          marginBottom: 6,
+          fontSize: 11,
+          color: "rgba(255,255,255,0.5)",
+          fontStyle: "italic",
+        }}>
+          Press Tab to accept suggestion
+        </div>
+      )}
+
       {/* Scrollable grid */}
       <div
         style={{
@@ -344,6 +513,7 @@ export default function SpreadsheetArea({
           ref={tableRef}
           tabIndex={0}
           onKeyDown={handleTableKeyDown}
+          onPaste={handlePaste}
           style={{
             borderCollapse: "collapse",
             width: "100%",
@@ -369,26 +539,50 @@ export default function SpreadsheetArea({
                     selectedCell?.row === ri && selectedCell?.col === ci;
                   const isEditing =
                     editingCell?.row === ri && editingCell?.col === ci;
+                  const showGhost = isEditing && cellSuggestion;
                   return (
                     <td
                       key={ci}
                       onClick={() => handleCellClick(ri, ci)}
-                      onDoubleClick={() => handleCellDoubleClick(ri, ci)}
                       style={{
                         ...baseCellStyle,
                         ...(isSelected ? selectedCellStyle : {}),
-                        ...(cell.error ? { color: "#EF5350", fontStyle: "italic" } : {}),
+                        ...(cell.error
+                          ? { color: "#EF5350", fontStyle: "italic" }
+                          : {}),
                       }}
                     >
                       {isEditing ? (
-                        <input
-                          autoFocus
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={() => commitEdit(ri, ci)}
-                          onKeyDown={(e) => handleEditKeyDown(e, ri, ci)}
-                          style={cellInputStyle}
-                        />
+                        <div style={{ position: "relative", width: "100%", height: "100%" }}>
+                          {/* Ghost suggestion text */}
+                          {showGhost && (
+                            <span
+                              style={{
+                                position: "absolute",
+                                top: 0,
+                                right: 0,
+                                height: "100%",
+                                display: "flex",
+                                alignItems: "center",
+                                color: "rgba(156,39,176,0.4)",
+                                fontSize: 13,
+                                fontFamily: "monospace",
+                                pointerEvents: "none",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {cellSuggestion}
+                            </span>
+                          )}
+                          <input
+                            autoFocus
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={() => commitEdit(ri, ci)}
+                            onKeyDown={(e) => handleEditKeyDown(e, ri, ci)}
+                            style={cellInputStyle}
+                          />
+                        </div>
                       ) : (
                         cell.error ||
                         (cell.value !== null ? cell.value : cell.raw)
@@ -435,10 +629,18 @@ export default function SpreadsheetArea({
       </div>
 
       {/* Chart */}
-      {showChart && <DataChart data={data} chartType={chartType} />}
+      {showChart && (
+        <DataChart
+          data={data}
+          chartType={chartType}
+          labelCol={chartLabelCol}
+          chartCols={chartDataCols}
+          onLabelColChange={setChartLabelCol}
+          onChartColsChange={setChartDataCols}
+        />
+      )}
     </div>
   );
 }
 
-// Export grid factory for use in parent
 export { createEmptyGrid };

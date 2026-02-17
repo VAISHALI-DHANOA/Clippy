@@ -2,6 +2,7 @@
 const BACKEND_URL = "http://localhost:3003/api/clippy-reaction";
 const SUGGESTION_URL = "http://localhost:3003/api/clippy-suggestion";
 const SPREADSHEET_URL = "http://localhost:3003/api/clippy-spreadsheet";
+const CELL_SUGGEST_URL = "http://localhost:3003/api/clippy-cell-suggest";
 
 export async function getAIReaction(userText) {
   if (userText.length < 20) {
@@ -62,6 +63,22 @@ export async function getSpreadsheetReaction(tableData, selectedCell) {
 
   const data = await response.json();
   return data.reply || "";
+}
+
+export async function getCellSuggestion(tableData, cellRef, currentValue) {
+  try {
+    const response = await fetch(CELL_SUGGEST_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tableData, cellRef, currentValue }),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.suggestion || null;
+  } catch (error) {
+    console.error("Cell suggestion request failed:", error);
+    return null;
+  }
 }
 
 export async function getTextSuggestion(userText) {

@@ -1,36 +1,27 @@
 const COLORS = ["#9C27B0", "#2196F3", "#4CAF50", "#FF9800", "#f44336"];
 
-function extractChartData(data) {
+function extractChartData(data, labelCol, dataCols) {
   const numRows = data.length;
-  const numCols = data[0].length;
   const labels = [];
   const series = [];
 
-  // Check if column A has text labels
-  const colAIsLabels = data.some(
-    (row) => row[0].value !== null && typeof row[0].value === "string" && row[0].value !== ""
-  );
-
-  const labelCol = colAIsLabels ? 0 : -1;
-  const dataStartCol = colAIsLabels ? 1 : 0;
-
   for (let r = 0; r < numRows; r++) {
-    if (labelCol >= 0) {
-      labels.push(data[r][labelCol].value || `Row ${r + 1}`);
+    if (labelCol !== null && labelCol >= 0 && labelCol < data[0].length) {
+      const v = data[r][labelCol].value;
+      labels.push(v !== null ? String(v) : `Row ${r + 1}`);
     } else {
       labels.push(`${r + 1}`);
     }
   }
 
-  for (let c = dataStartCol; c < numCols; c++) {
+  for (const c of dataCols) {
+    if (c < 0 || c >= data[0].length) continue;
     const colName = String.fromCharCode(65 + c);
     const values = data.map((row) => {
       const v = row[c].value;
       return typeof v === "number" ? v : 0;
     });
-    if (values.some((v) => v !== 0)) {
-      series.push({ name: colName, values });
-    }
+    series.push({ name: colName, values });
   }
 
   return { labels, series };
@@ -137,24 +128,42 @@ function LineChart({ labels, series, width, height }) {
   );
 }
 
-export default function DataChart({ data, chartType }) {
-  const { labels, series } = extractChartData(data);
+const colBtnStyle = (active, color) => ({
+  padding: "3px 10px",
+  fontSize: 11,
+  fontWeight: active ? 600 : 400,
+  border: active ? `2px solid ${color}` : "1px solid rgba(255,255,255,0.12)",
+  background: active ? `${color}22` : "rgba(255,255,255,0.04)",
+  color: active ? color : "rgba(255,255,255,0.4)",
+  borderRadius: 5,
+  cursor: "pointer",
+  transition: "all 0.15s",
+});
 
-  if (series.length === 0) {
-    return (
-      <div style={{
-        padding: 20,
-        textAlign: "center",
-        color: "rgba(255,255,255,0.3)",
-        fontSize: 13,
-        fontStyle: "italic",
-      }}>
-        Enter some numbers in the spreadsheet to see a chart.
-      </div>
-    );
-  }
+export default function DataChart({ data, chartType, labelCol, chartCols, onLabelColChange, onChartColsChange }) {
+  const numCols = data[0].length;
+  const allCols = Array.from({ length: numCols }, (_, i) => i);
+  const colNames = allCols.map((i) => String.fromCharCode(65 + i));
 
-  const Chart = chartType === "line" ? LineChart : BarChart;
+  const toggleDataCol = (colIdx) => {
+    if (chartCols.includes(colIdx)) {
+      onChartColsChange(chartCols.filter((c) => c !== colIdx));
+    } else {
+      onChartColsChange([...chartCols, colIdx].sort());
+    }
+  };
+
+  const setAsLabelCol = (colIdx) => {
+    if (labelCol === colIdx) {
+      onLabelColChange(null); // deselect
+    } else {
+      onLabelColChange(colIdx);
+      // Remove from data cols if it was there
+      onChartColsChange(chartCols.filter((c) => c !== colIdx));
+    }
+  };
+
+  const { labels, series } = extractChartData(data, labelCol, chartCols);
 
   return (
     <div style={{
@@ -164,14 +173,83 @@ export default function DataChart({ data, chartType }) {
       borderRadius: 10,
       border: "1px solid rgba(255,255,255,0.06)",
     }}>
-      <Chart labels={labels} series={series} width={560} height={220} />
-      <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 8 }}>
-        {series.map((s, i) => (
-          <span key={i} style={{ color: COLORS[i % COLORS.length], fontSize: 11 }}>
-            {"■ "} Column {s.name}
-          </span>
+      {/* Column selector */}
+      <div style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 6,
+        alignItems: "center",
+        marginBottom: 12,
+        paddingBottom: 10,
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+      }}>
+        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginRight: 4 }}>
+          Labels:
+        </span>
+        {allCols.map((ci) => (
+          <button
+            key={`label-${ci}`}
+            onClick={() => setAsLabelCol(ci)}
+            style={colBtnStyle(labelCol === ci, "#FF9800")}
+          >
+            {colNames[ci]}
+          </button>
         ))}
+        <span style={{
+          color: "rgba(255,255,255,0.15)",
+          margin: "0 4px",
+          fontSize: 14,
+        }}>|</span>
+        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginRight: 4 }}>
+          Data:
+        </span>
+        {allCols.map((ci) => {
+          const isLabel = labelCol === ci;
+          const isData = chartCols.includes(ci);
+          const colorIdx = isData ? chartCols.indexOf(ci) : 0;
+          return (
+            <button
+              key={`data-${ci}`}
+              onClick={() => !isLabel && toggleDataCol(ci)}
+              disabled={isLabel}
+              style={{
+                ...colBtnStyle(isData, COLORS[colorIdx % COLORS.length]),
+                ...(isLabel ? { opacity: 0.3, cursor: "not-allowed" } : {}),
+              }}
+            >
+              {colNames[ci]}
+            </button>
+          );
+        })}
       </div>
+
+      {/* Chart or empty state */}
+      {series.length === 0 ? (
+        <div style={{
+          padding: 20,
+          textAlign: "center",
+          color: "rgba(255,255,255,0.3)",
+          fontSize: 13,
+          fontStyle: "italic",
+        }}>
+          Select data columns above to visualize.
+        </div>
+      ) : (
+        <>
+          {chartType === "line" ? (
+            <LineChart labels={labels} series={series} width={560} height={220} />
+          ) : (
+            <BarChart labels={labels} series={series} width={560} height={220} />
+          )}
+          <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 8 }}>
+            {series.map((s, i) => (
+              <span key={i} style={{ color: COLORS[i % COLORS.length], fontSize: 11 }}>
+                {"■ "} Column {s.name}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
