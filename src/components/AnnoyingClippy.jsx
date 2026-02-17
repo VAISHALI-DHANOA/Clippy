@@ -6,6 +6,7 @@ import WritingArea from "./WritingArea.jsx";
 import { useClippyReactions } from "../hooks/useClippyReactions.js";
 import { useQuiz } from "../hooks/useQuiz.js";
 import { useIdleDetection } from "../hooks/useIdleDetection.js";
+import { useTextSuggestion } from "../hooks/useTextSuggestion.js";
 import { CLIPPY_QUOTES, EXPRESSIONS } from "../data/quotes.js";
 import { ANIMATION_STYLES } from "../styles/animations.js";
 
@@ -35,6 +36,7 @@ export default function AnnoyingClippy() {
   const { processTextChange } = useClippyReactions(showMessage, reactionMode);
   const { quizActive, currentQuiz, quizResult, triggerQuiz, handleQuizAnswer } = useQuiz(showMessage);
   useIdleDetection(text, showMessage);
+  const { suggestion, clearSuggestion, acceptSuggestion } = useTextSuggestion(text);
 
   // Random annoyance timer
   useEffect(() => {
@@ -55,6 +57,13 @@ export default function AnnoyingClippy() {
     const newText = e.target.value;
     setText(newText);
     processTextChange(newText);
+  };
+
+  const handleAcceptSuggestion = () => {
+    const accepted = acceptSuggestion();
+    if (accepted) {
+      setText((prev) => prev + accepted);
+    }
   };
 
   const handleDismiss = () => {
@@ -126,7 +135,13 @@ export default function AnnoyingClippy() {
           reactionMode={reactionMode}
           setReactionMode={setReactionMode}
         />
-        <WritingArea text={text} onTextChange={handleTextChange} />
+        <WritingArea
+          text={text}
+          onTextChange={handleTextChange}
+          suggestion={suggestion}
+          onAcceptSuggestion={handleAcceptSuggestion}
+          onClearSuggestion={clearSuggestion}
+        />
       </div>
 
       {/* Clippy character */}

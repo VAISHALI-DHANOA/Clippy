@@ -86,6 +86,52 @@ Stay playful but USEFUL. Students should learn something from every comment.`,
   }
 });
 
+// Text completion/suggestion endpoint
+app.post('/api/clippy-suggestion', async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    if (!CLAUDE_API_KEY) {
+      return res.status(500).json({ error: 'API key not configured in .env file' });
+    }
+
+    if (!text) {
+      return res.status(400).json({ error: 'Missing text' });
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 40,
+        system: `You are a writing autocomplete assistant. Continue the user's text naturally with a short phrase (5-15 words). Output ONLY the continuation text — no explanations, no quotes, no prefix. Match the user's style and tone exactly.`,
+        messages: [{
+          role: 'user',
+          content: text.slice(-300)
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return res.status(response.status).json({ error: errorData });
+    }
+
+    const data = await response.json();
+    const suggestion = data.content?.map((i) => i.text || '').join('') || '';
+
+    res.json({ suggestion });
+  } catch (error) {
+    console.error('Error calling Claude API for suggestion:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Clippy backend server running on http://localhost:${PORT}`);
   console.log(`🔗 Frontend should call: http://localhost:${PORT}/api/clippy-reaction`);

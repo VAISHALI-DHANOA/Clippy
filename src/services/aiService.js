@@ -1,5 +1,6 @@
 // Use local backend server to avoid CORS issues
 const BACKEND_URL = "http://localhost:3003/api/clippy-reaction";
+const SUGGESTION_URL = "http://localhost:3003/api/clippy-suggestion";
 
 export async function getAIReaction(userText) {
   if (userText.length < 20) {
@@ -24,4 +25,32 @@ export async function getAIReaction(userText) {
 
   const data = await response.json();
   return data.reply || "";
+}
+
+export async function getTextSuggestion(userText) {
+  if (userText.length < 10) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(SUGGESTION_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text: userText
+      }),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.suggestion || null;
+  } catch (error) {
+    console.error("Suggestion request failed:", error);
+    return null;
+  }
 }
