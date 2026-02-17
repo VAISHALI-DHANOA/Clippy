@@ -43,7 +43,7 @@ export function useClippyReactions(showMessage, reactionMode = 'ai') {
       if (reactionMode === 'ai' && textLength > 20 && !aiReacting) {
         // AI MODE: Use AI reactions
         const timeSinceLastAI = now - lastAIReactionTime.current;
-        const aiCooldownPassed = timeSinceLastAI > 5000; // 5 seconds between AI reactions
+        const aiCooldownPassed = timeSinceLastAI > 30000; // 30 seconds between AI reactions
 
         if (aiCooldownPassed) {
           // Always use AI when in AI mode

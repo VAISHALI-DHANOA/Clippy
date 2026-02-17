@@ -86,6 +86,61 @@ Stay playful but USEFUL. Students should learn something from every comment.`,
   }
 });
 
+// Chat endpoint — user talks directly to Clippy
+app.post('/api/clippy-chat', async (req, res) => {
+  try {
+    const { text, message } = req.body;
+
+    if (!CLAUDE_API_KEY) {
+      return res.status(500).json({ error: 'API key not configured in .env file' });
+    }
+
+    if (!message) {
+      return res.status(400).json({ error: 'Missing message' });
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        system: `You are Clippy, a helpful but slightly sassy AI writing assistant. The user is writing a document and is chatting with you directly. You can see their current draft (if any). Be helpful, concise, and keep your personality — witty but genuinely useful. Keep responses under 2-3 sentences.`,
+        messages: [
+          ...(text ? [{
+            role: 'user',
+            content: `Here's what I've written so far:\n\n"${text.slice(-600)}"`
+          }, {
+            role: 'assistant',
+            content: "Got it! I can see your document. What do you need?"
+          }] : []),
+          {
+            role: 'user',
+            content: message
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return res.status(response.status).json({ error: errorData });
+    }
+
+    const data = await response.json();
+    const reply = data.content?.map((i) => i.text || '').join('') || '';
+
+    res.json({ reply });
+  } catch (error) {
+    console.error('Error in clippy-chat:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
 // Text completion/suggestion endpoint
 app.post('/api/clippy-suggestion', async (req, res) => {
   try {

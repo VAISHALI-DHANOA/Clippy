@@ -9,6 +9,7 @@ import { useIdleDetection } from "../hooks/useIdleDetection.js";
 import { useTextSuggestion } from "../hooks/useTextSuggestion.js";
 import { CLIPPY_QUOTES, EXPRESSIONS } from "../data/quotes.js";
 import { ANIMATION_STYLES } from "../styles/animations.js";
+import { getAIChat } from "../services/aiService.js";
 
 export default function AnnoyingClippy() {
   const [text, setText] = useState("");
@@ -21,6 +22,7 @@ export default function AnnoyingClippy() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [popupStyle, setPopupStyle] = useState("normal");
   const [reactionMode, setReactionMode] = useState("ai"); // "ai" or "regex"
+  const [isChatLoading, setIsChatLoading] = useState(false);
   const annoyTimerRef = useRef(null);
 
   const showMessage = useCallback((msg, expr = "sassy", style = "normal") => {
@@ -38,7 +40,7 @@ export default function AnnoyingClippy() {
   useIdleDetection(text, showMessage);
   const { suggestion, clearSuggestion, acceptSuggestion } = useTextSuggestion(text);
 
-  // Random annoyance timer
+  // Random annoyance timer — reduced frequency (60-90s)
   useEffect(() => {
     annoyTimerRef.current = setInterval(() => {
       if (Math.random() < 0.3) {
@@ -48,7 +50,7 @@ export default function AnnoyingClippy() {
         const expr = EXPRESSIONS[Math.floor(Math.random() * EXPRESSIONS.length)];
         showMessage(msg, expr);
       }
-    }, 25000 + Math.random() * 15000);
+    }, 60000 + Math.random() * 30000);
 
     return () => clearInterval(annoyTimerRef.current);
   }, [showMessage, triggerQuiz]);
@@ -78,6 +80,21 @@ export default function AnnoyingClippy() {
       showMessage("Miss me? Of course you did. 💅", "winking");
     } else {
       setIsMinimized(true);
+    }
+  };
+
+  const handleChatSubmit = async (userMessage) => {
+    if (!userMessage.trim() || isChatLoading) return;
+    setIsChatLoading(true);
+    setExpression("happy");
+    setClippyMessage("Hmm, let me think... 🤔");
+    try {
+      const reply = await getAIChat(text, userMessage);
+      showMessage(reply || "I got nothing. Impressive.", "sassy", "ai");
+    } catch {
+      showMessage("I tried to think but my brain buffered. Try again! 😅", "shocked");
+    } finally {
+      setIsChatLoading(false);
     }
   };
 
@@ -119,113 +136,111 @@ export default function AnnoyingClippy() {
         </p>
       </div>
 
-      {/* Main writing area */}
+      {/* Main content row: writing area + Clippy side panel */}
       <div style={{
         width: "100%",
-        maxWidth: 720,
+        maxWidth: 1060,
+        display: "flex",
+        gap: 20,
+        alignItems: "flex-start",
         position: "relative",
         zIndex: 1,
-        background: "rgba(255,255,255,0.03)",
-        borderRadius: 16,
-        border: "1px solid rgba(255,255,255,0.08)",
-        backdropFilter: "blur(10px)",
-        padding: 24,
       }}>
-        <ApiKeyInput
-          reactionMode={reactionMode}
-          setReactionMode={setReactionMode}
-        />
-        <WritingArea
-          text={text}
-          onTextChange={handleTextChange}
-          suggestion={suggestion}
-          onAcceptSuggestion={handleAcceptSuggestion}
-          onClearSuggestion={clearSuggestion}
-        />
-      </div>
-
-      {/* Clippy character */}
-      {!isMinimized ? (
+        {/* Writing area */}
         <div style={{
-          position: "fixed",
-          bottom: 20,
-          right: 20,
-          zIndex: 1000,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-end",
-          gap: 8,
-          animation: isBouncing ? "clippyBounce 0.6s ease" : isShaking ? "clippyShake 0.5s ease" : "clippyFloat 3s ease-in-out infinite",
+          flex: 1,
+          background: "rgba(255,255,255,0.03)",
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.08)",
+          backdropFilter: "blur(10px)",
+          padding: 24,
+          minWidth: 0,
         }}>
-          {isVisible && (
-            <SpeechBubble
-              message={clippyMessage}
-              popupStyle={popupStyle}
-              quizActive={quizActive}
-              currentQuiz={currentQuiz}
-              quizResult={quizResult}
-              onQuizAnswer={handleQuizAnswer}
-              onDismiss={handleDismiss}
-              onMinimize={handleMinimize}
-            />
-          )}
-
-          <div
-            style={{ cursor: "pointer", transition: "transform 0.2s" }}
-            onClick={() => setIsVisible(!isVisible)}
-            onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
-            onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-          >
-            <ClippyCharacter expression={expression} />
-          </div>
+          <ApiKeyInput
+            reactionMode={reactionMode}
+            setReactionMode={setReactionMode}
+          />
+          <WritingArea
+            text={text}
+            onTextChange={handleTextChange}
+            suggestion={suggestion}
+            onAcceptSuggestion={handleAcceptSuggestion}
+            onClearSuggestion={clearSuggestion}
+          />
         </div>
-      ) : (
-        <div
-          onClick={handleMinimize}
-          style={{
-            position: "fixed",
-            bottom: 20,
-            right: 20,
-            zIndex: 1000,
-            width: 50,
-            height: 50,
-            borderRadius: "50%",
-            background: "linear-gradient(135deg, #7B1FA2, #512DA8)",
+
+        {/* Clippy side panel */}
+        {!isMinimized ? (
+          <div style={{
+            width: 270,
+            flexShrink: 0,
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            boxShadow: "0 4px 15px rgba(123,31,162,0.4)",
-            fontSize: 24,
-            animation: "clippyPulse 2s ease-in-out infinite",
-          }}
-        >
-          📎
-        </div>
-      )}
+            gap: 10,
+            animation: isBouncing ? "clippyBounce 0.6s ease" : isShaking ? "clippyShake 0.5s ease" : "clippyFloat 3s ease-in-out infinite",
+          }}>
+            {isVisible && (
+              <SpeechBubble
+                message={clippyMessage}
+                popupStyle={popupStyle}
+                quizActive={quizActive}
+                currentQuiz={currentQuiz}
+                quizResult={quizResult}
+                onQuizAnswer={handleQuizAnswer}
+                onDismiss={handleDismiss}
+                onMinimize={handleMinimize}
+                onChatSubmit={handleChatSubmit}
+                isChatLoading={isChatLoading}
+              />
+            )}
 
-      {/* Message counter badge */}
-      {messageCount > 0 && (
-        <div style={{
-          position: "fixed",
-          bottom: isMinimized ? 60 : 105,
-          right: 20,
-          zIndex: 1001,
-          background: "#f44336",
-          color: "white",
-          borderRadius: "50%",
-          width: 22,
-          height: 22,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 11,
-          fontWeight: 700,
-          boxShadow: "0 2px 8px rgba(244,67,54,0.4)",
-        }}>
-          {messageCount > 99 ? "99+" : messageCount}
-        </div>
-      )}
+            <div
+              style={{ cursor: "pointer", transition: "transform 0.2s" }}
+              onClick={() => setIsVisible(!isVisible)}
+              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
+              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+            >
+              <ClippyCharacter expression={expression} />
+            </div>
+
+            {/* Message counter badge */}
+            {messageCount > 0 && (
+              <div style={{
+                background: "#f44336",
+                color: "white",
+                borderRadius: 12,
+                padding: "2px 8px",
+                fontSize: 11,
+                fontWeight: 700,
+                boxShadow: "0 2px 8px rgba(244,67,54,0.4)",
+              }}>
+                {messageCount} message{messageCount !== 1 ? "s" : ""}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div
+            onClick={handleMinimize}
+            style={{
+              width: 50,
+              height: 50,
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #7B1FA2, #512DA8)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              boxShadow: "0 4px 15px rgba(123,31,162,0.4)",
+              fontSize: 24,
+              flexShrink: 0,
+              animation: "clippyPulse 2s ease-in-out infinite",
+            }}
+          >
+            📎
+          </div>
+        )}
+      </div>
 
       <style>{ANIMATION_STYLES}</style>
     </div>

@@ -27,6 +27,22 @@ export async function getAIReaction(userText) {
   return data.reply || "";
 }
 
+export async function getAIChat(documentText, userMessage) {
+  try {
+    const response = await fetch("http://localhost:3003/api/clippy-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: documentText, message: userMessage }),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.reply || null;
+  } catch (error) {
+    console.error("Chat request failed:", error);
+    return null;
+  }
+}
+
 export async function getTextSuggestion(userText) {
   if (userText.length < 10) {
     return null;
