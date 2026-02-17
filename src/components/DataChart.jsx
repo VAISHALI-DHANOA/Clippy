@@ -1,6 +1,6 @@
-const COLORS = ["#9C27B0", "#2196F3", "#4CAF50", "#FF9800", "#f44336"];
+export const COLORS = ["#9C27B0", "#2196F3", "#4CAF50", "#FF9800", "#f44336"];
 
-function extractChartData(data, labelCol, dataCols) {
+export function extractChartData(data, labelCol, dataCols) {
   const numRows = data.length;
   const labels = [];
   const series = [];
@@ -27,7 +27,7 @@ function extractChartData(data, labelCol, dataCols) {
   return { labels, series };
 }
 
-function BarChart({ labels, series, width, height }) {
+export function BarChart({ labels, series, width, height, highlightedRows, onHighlight, onClearHighlight }) {
   const pad = { top: 20, right: 20, bottom: 36, left: 50 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
@@ -35,6 +35,7 @@ function BarChart({ labels, series, width, height }) {
   const maxVal = Math.max(...allValues, 1);
   const barGroupW = chartW / labels.length;
   const barW = barGroupW / (series.length + 1);
+  const hasHighlight = highlightedRows && highlightedRows.size > 0;
 
   return (
     <svg width={width} height={height}>
@@ -56,10 +57,17 @@ function BarChart({ labels, series, width, height }) {
           const x = pad.left + vi * barGroupW + si * barW + barW * 0.5;
           const barH = (val / maxVal) * chartH;
           const y = pad.top + chartH - barH;
+          const isHl = hasHighlight && highlightedRows.has(vi);
           return (
             <rect key={`${si}-${vi}`} x={x} y={y} width={barW * 0.8}
               height={Math.max(barH, 0)} fill={COLORS[si % COLORS.length]}
-              rx={2} opacity={0.85} />
+              rx={2}
+              opacity={hasHighlight ? (isHl ? 1 : 0.2) : 0.85}
+              stroke={isHl ? "#fff" : "none"} strokeWidth={isHl ? 1.5 : 0}
+              style={{ cursor: onHighlight ? "pointer" : "default" }}
+              onMouseEnter={onHighlight ? () => onHighlight([vi]) : undefined}
+              onMouseLeave={onClearHighlight || undefined}
+            />
           );
         })
       )}
@@ -75,13 +83,14 @@ function BarChart({ labels, series, width, height }) {
   );
 }
 
-function LineChart({ labels, series, width, height }) {
+export function LineChart({ labels, series, width, height, highlightedRows, onHighlight, onClearHighlight }) {
   const pad = { top: 20, right: 20, bottom: 36, left: 50 };
   const chartW = width - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
   const allValues = series.flatMap((s) => s.values);
   const maxVal = Math.max(...allValues, 1);
   const step = labels.length > 1 ? chartW / (labels.length - 1) : chartW;
+  const hasHighlight = highlightedRows && highlightedRows.size > 0;
 
   return (
     <svg width={width} height={height}>
@@ -107,11 +116,23 @@ function LineChart({ labels, series, width, height }) {
         return (
           <g key={si}>
             <polyline points={points} fill="none"
-              stroke={COLORS[si % COLORS.length]} strokeWidth={2} />
+              stroke={COLORS[si % COLORS.length]} strokeWidth={2}
+              opacity={hasHighlight ? 0.3 : 1} />
             {s.values.map((val, vi) => {
               const x = pad.left + vi * step;
               const y = pad.top + chartH - (val / maxVal) * chartH;
-              return <circle key={vi} cx={x} cy={y} r={3} fill={COLORS[si % COLORS.length]} />;
+              const isHl = hasHighlight && highlightedRows.has(vi);
+              return (
+                <circle key={vi} cx={x} cy={y}
+                  r={isHl ? 6 : 3}
+                  fill={COLORS[si % COLORS.length]}
+                  opacity={hasHighlight ? (isHl ? 1 : 0.2) : 1}
+                  stroke={isHl ? "#fff" : "none"} strokeWidth={isHl ? 1.5 : 0}
+                  style={{ cursor: onHighlight ? "pointer" : "default" }}
+                  onMouseEnter={onHighlight ? () => onHighlight([vi]) : undefined}
+                  onMouseLeave={onClearHighlight || undefined}
+                />
+              );
             })}
           </g>
         );
@@ -128,7 +149,7 @@ function LineChart({ labels, series, width, height }) {
   );
 }
 
-const colBtnStyle = (active, color) => ({
+export const colBtnStyle = (active, color) => ({
   padding: "3px 10px",
   fontSize: 11,
   fontWeight: active ? 600 : 400,
@@ -155,10 +176,9 @@ export default function DataChart({ data, chartType, labelCol, chartCols, onLabe
 
   const setAsLabelCol = (colIdx) => {
     if (labelCol === colIdx) {
-      onLabelColChange(null); // deselect
+      onLabelColChange(null);
     } else {
       onLabelColChange(colIdx);
-      // Remove from data cols if it was there
       onChartColsChange(chartCols.filter((c) => c !== colIdx));
     }
   };
@@ -173,7 +193,6 @@ export default function DataChart({ data, chartType, labelCol, chartCols, onLabe
       borderRadius: 10,
       border: "1px solid rgba(255,255,255,0.06)",
     }}>
-      {/* Column selector */}
       <div style={{
         display: "flex",
         flexWrap: "wrap",
@@ -183,55 +202,30 @@ export default function DataChart({ data, chartType, labelCol, chartCols, onLabe
         paddingBottom: 10,
         borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}>
-        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginRight: 4 }}>
-          Labels:
-        </span>
+        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginRight: 4 }}>Labels:</span>
         {allCols.map((ci) => (
-          <button
-            key={`label-${ci}`}
-            onClick={() => setAsLabelCol(ci)}
-            style={colBtnStyle(labelCol === ci, "#FF9800")}
-          >
-            {colNames[ci]}
-          </button>
+          <button key={`label-${ci}`} onClick={() => setAsLabelCol(ci)}
+            style={colBtnStyle(labelCol === ci, "#FF9800")}>{colNames[ci]}</button>
         ))}
-        <span style={{
-          color: "rgba(255,255,255,0.15)",
-          margin: "0 4px",
-          fontSize: 14,
-        }}>|</span>
-        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginRight: 4 }}>
-          Data:
-        </span>
+        <span style={{ color: "rgba(255,255,255,0.15)", margin: "0 4px", fontSize: 14 }}>|</span>
+        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginRight: 4 }}>Data:</span>
         {allCols.map((ci) => {
           const isLabel = labelCol === ci;
           const isData = chartCols.includes(ci);
           const colorIdx = isData ? chartCols.indexOf(ci) : 0;
           return (
-            <button
-              key={`data-${ci}`}
-              onClick={() => !isLabel && toggleDataCol(ci)}
+            <button key={`data-${ci}`} onClick={() => !isLabel && toggleDataCol(ci)}
               disabled={isLabel}
-              style={{
-                ...colBtnStyle(isData, COLORS[colorIdx % COLORS.length]),
-                ...(isLabel ? { opacity: 0.3, cursor: "not-allowed" } : {}),
-              }}
-            >
+              style={{ ...colBtnStyle(isData, COLORS[colorIdx % COLORS.length]),
+                ...(isLabel ? { opacity: 0.3, cursor: "not-allowed" } : {}) }}>
               {colNames[ci]}
             </button>
           );
         })}
       </div>
 
-      {/* Chart or empty state */}
       {series.length === 0 ? (
-        <div style={{
-          padding: 20,
-          textAlign: "center",
-          color: "rgba(255,255,255,0.3)",
-          fontSize: 13,
-          fontStyle: "italic",
-        }}>
+        <div style={{ padding: 20, textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 13, fontStyle: "italic" }}>
           Select data columns above to visualize.
         </div>
       ) : (

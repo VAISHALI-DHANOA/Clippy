@@ -295,6 +295,61 @@ Rules:
   }
 });
 
+// Dashboard AI reaction endpoint
+app.post('/api/clippy-dashboard', async (req, res) => {
+  try {
+    const { tableData, dashboardConfig } = req.body;
+
+    if (!CLAUDE_API_KEY) {
+      return res.status(500).json({ error: 'API key not configured in .env file' });
+    }
+
+    if (!tableData && !dashboardConfig) {
+      return res.status(400).json({ error: 'Missing data' });
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        system: `You are Clippy, a helpful but sassy AI visualization assistant. The user is building an interactive dashboard with multiple charts linked to a spreadsheet. You can see their data and current chart configuration.
+
+Give ONE specific, actionable suggestion about their dashboard — a chart type to add, a correlation you spot, a filter to try, a better column mapping, or a data insight. Be playful but genuinely useful. Keep it to 1-2 sentences.
+
+Examples of good suggestions:
+- "Your columns A and C look correlated — add a scatter plot with A on X and C on Y to visualize it!"
+- "That bar chart would be clearer as a histogram — column B has continuous values, not categories."
+- "Try filtering rows 1-20 to zoom in on that spike in column D!"
+- "I see 5 categories in column A — a pie chart would show their proportions nicely."
+- "Add a heatmap with A as rows and B as columns to spot patterns in your data!"`,
+        messages: [{
+          role: 'user',
+          content: `Spreadsheet data:\n${tableData || '(empty)'}\n\nDashboard configuration:\n${dashboardConfig || '(no charts yet)'}\n\nGive one specific suggestion about the dashboard.`
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return res.status(response.status).json({ error: errorData });
+    }
+
+    const data = await response.json();
+    const reply = data.content?.map((i) => i.text || '').join('') || '';
+
+    res.json({ reply });
+  } catch (error) {
+    console.error('Error in clippy-dashboard:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Clippy backend server running on http://localhost:${PORT}`);
   console.log(`🔗 Frontend should call: http://localhost:${PORT}/api/clippy-reaction`);

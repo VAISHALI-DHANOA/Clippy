@@ -3,6 +3,7 @@ const BACKEND_URL = "http://localhost:3003/api/clippy-reaction";
 const SUGGESTION_URL = "http://localhost:3003/api/clippy-suggestion";
 const SPREADSHEET_URL = "http://localhost:3003/api/clippy-spreadsheet";
 const CELL_SUGGEST_URL = "http://localhost:3003/api/clippy-cell-suggest";
+const DASHBOARD_URL = "http://localhost:3003/api/clippy-dashboard";
 
 export async function getAIReaction(userText) {
   if (userText.length < 20) {
@@ -107,4 +108,24 @@ export async function getTextSuggestion(userText) {
     console.error("Suggestion request failed:", error);
     return null;
   }
+}
+
+export async function getDashboardReaction(tableData, dashboardConfig) {
+  if (!tableData && !dashboardConfig) {
+    throw new Error("Invalid parameters");
+  }
+
+  const response = await fetch(DASHBOARD_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tableData, dashboardConfig }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(`Backend request failed: ${response.status} - ${errorData.error || "Unknown error"}`);
+  }
+
+  const data = await response.json();
+  return data.reply || "";
 }

@@ -3,11 +3,13 @@ import ClippyCharacter from "./ClippyCharacter.jsx";
 import SpeechBubble from "./SpeechBubble.jsx";
 import WritingArea from "./WritingArea.jsx";
 import SpreadsheetArea, { createEmptyGrid, serializeSpreadsheetForAI } from "./SpreadsheetArea.jsx";
+import DashboardArea from "./DashboardArea.jsx";
 import { useClippyReactions } from "../hooks/useClippyReactions.js";
 import { useQuiz } from "../hooks/useQuiz.js";
 import { useIdleDetection } from "../hooks/useIdleDetection.js";
 import { useTextSuggestion } from "../hooks/useTextSuggestion.js";
 import { useSpreadsheetReactions } from "../hooks/useSpreadsheetReactions.js";
+import { useDashboardReactions } from "../hooks/useDashboardReactions.js";
 import { CLIPPY_QUOTES, EXPRESSIONS } from "../data/quotes.js";
 import { ANIMATION_STYLES } from "../styles/animations.js";
 import { getAIChat } from "../services/aiService.js";
@@ -15,6 +17,7 @@ import { getAIChat } from "../services/aiService.js";
 const TABS = [
   { key: "writing", label: "Writing" },
   { key: "spreadsheet", label: "Spreadsheet" },
+  { key: "dashboard", label: "Dashboard" },
 ];
 
 export default function AnnoyingClippy() {
@@ -35,6 +38,8 @@ export default function AnnoyingClippy() {
   // Spreadsheet state
   const [spreadsheetData, setSpreadsheetData] = useState(() => createEmptyGrid(10, 8));
   const [selectedCell, setSelectedCell] = useState(null);
+  // Dashboard state
+  const [dashboardPanels, setDashboardPanels] = useState([]);
 
   const showMessage = useCallback((msg, expr = "sassy", style = "normal") => {
     setClippyMessage(msg);
@@ -51,6 +56,7 @@ export default function AnnoyingClippy() {
   useIdleDetection(text, showMessage);
   const { suggestion, clearSuggestion, acceptSuggestion } = useTextSuggestion(text);
   const { processDataChange } = useSpreadsheetReactions(showMessage);
+  const { processDashboardChange } = useDashboardReactions(showMessage);
 
   // Trigger spreadsheet AI reactions when data changes
   useEffect(() => {
@@ -58,6 +64,13 @@ export default function AnnoyingClippy() {
       processDataChange(spreadsheetData, selectedCell);
     }
   }, [spreadsheetData, activeTab, selectedCell, processDataChange]);
+
+  // Trigger dashboard AI reactions when panels or data change
+  useEffect(() => {
+    if (activeTab === "dashboard") {
+      processDashboardChange(spreadsheetData, dashboardPanels);
+    }
+  }, [spreadsheetData, dashboardPanels, activeTab, processDashboardChange]);
 
   // Random annoyance timer — reduced frequency (60-90s)
   useEffect(() => {
@@ -111,7 +124,9 @@ export default function AnnoyingClippy() {
     // Send context based on active tab
     const context = activeTab === "writing"
       ? text
-      : "SPREADSHEET DATA:\n" + serializeSpreadsheetForAI(spreadsheetData);
+      : activeTab === "spreadsheet"
+      ? "SPREADSHEET DATA:\n" + serializeSpreadsheetForAI(spreadsheetData)
+      : "DASHBOARD VIEW — SPREADSHEET DATA:\n" + serializeSpreadsheetForAI(spreadsheetData);
 
     try {
       const reply = await getAIChat(context, userMessage);
@@ -193,7 +208,7 @@ export default function AnnoyingClippy() {
               transition: "all 0.2s",
             }}
           >
-            {tab.key === "writing" ? "📝 " : "📊 "}{tab.label}
+            {tab.key === "writing" ? "📝 " : tab.key === "spreadsheet" ? "📊 " : "📈 "}{tab.label}
           </button>
         ))}
       </div>
@@ -226,12 +241,17 @@ export default function AnnoyingClippy() {
               onAcceptSuggestion={handleAcceptSuggestion}
               onClearSuggestion={clearSuggestion}
             />
-          ) : (
+          ) : activeTab === "spreadsheet" ? (
             <SpreadsheetArea
               data={spreadsheetData}
               onDataChange={setSpreadsheetData}
               selectedCell={selectedCell}
               onCellSelect={setSelectedCell}
+            />
+          ) : (
+            <DashboardArea
+              spreadsheetData={spreadsheetData}
+              onPanelsChange={setDashboardPanels}
             />
           )}
         </div>
