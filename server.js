@@ -9,6 +9,7 @@ dotenv.config();
 const app = express();
 const PORT = 3003;
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // Middleware
 app.use(cors());
@@ -346,6 +347,51 @@ Examples of good suggestions:
     res.json({ reply });
   } catch (error) {
     console.error('Error in clippy-dashboard:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
+// Text-to-speech endpoint using OpenAI TTS API
+app.post('/api/tts', async (req, res) => {
+  try {
+    const { text, voice } = req.body;
+
+    if (!OPENAI_API_KEY) {
+      return res.status(500).json({ error: 'OPENAI_API_KEY not configured in .env file' });
+    }
+
+    if (!text) {
+      return res.status(400).json({ error: 'Missing text' });
+    }
+
+    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'tts-1',
+        input: text.slice(0, 4096),
+        voice: voice || 'nova',
+        response_format: 'mp3',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('OpenAI TTS error:', errorData);
+      return res.status(response.status).json({ error: 'TTS generation failed' });
+    }
+
+    const audioBuffer = await response.arrayBuffer();
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': audioBuffer.byteLength,
+    });
+    res.send(Buffer.from(audioBuffer));
+  } catch (error) {
+    console.error('Error in TTS endpoint:', error);
     res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 });
