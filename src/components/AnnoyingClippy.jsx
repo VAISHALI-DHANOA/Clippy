@@ -10,6 +10,8 @@ import { useIdleDetection } from "../hooks/useIdleDetection.js";
 import { useTextSuggestion } from "../hooks/useTextSuggestion.js";
 import { useSpreadsheetReactions } from "../hooks/useSpreadsheetReactions.js";
 import { useDashboardReactions } from "../hooks/useDashboardReactions.js";
+import { useSpeechRecognition } from "../hooks/useSpeechRecognition.js";
+import { useTextToSpeech } from "../hooks/useTextToSpeech.js";
 import { CLIPPY_QUOTES, EXPRESSIONS } from "../data/quotes.js";
 import { ANIMATION_STYLES } from "../styles/animations.js";
 import { getAIChat } from "../services/aiService.js";
@@ -40,6 +42,8 @@ export default function AnnoyingClippy() {
   const [selectedCell, setSelectedCell] = useState(null);
   // Dashboard state
   const [dashboardPanels, setDashboardPanels] = useState([]);
+  // Voice state
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
 
   const showMessage = useCallback((msg, expr = "sassy", style = "normal") => {
     setClippyMessage(msg);
@@ -57,6 +61,72 @@ export default function AnnoyingClippy() {
   const { suggestion, clearSuggestion, acceptSuggestion } = useTextSuggestion(text);
   const { processDataChange } = useSpreadsheetReactions(showMessage);
   const { processDashboardChange } = useDashboardReactions(showMessage);
+
+  // Voice hooks
+  const {
+    isListening,
+    transcript,
+    isSupported: sttSupported,
+    startListening,
+    stopListening,
+    resetTranscript,
+  } = useSpeechRecognition();
+  const {
+    isSpeaking,
+    isSupported: ttsSupported,
+    speak,
+    stop: stopSpeaking,
+  } = useTextToSpeech();
+  const voiceSupported = sttSupported || ttsSupported;
+
+  const handleMicClick = useCallback(() => {
+    if (isListening) {
+      stopListening();
+    } else {
+      stopSpeaking();
+      resetTranscript();
+      startListening();
+    }
+  }, [isListening, startListening, stopListening, resetTranscript, stopSpeaking]);
+
+  const handleVoiceToggle = useCallback(() => {
+    setVoiceEnabled((v) => {
+      if (v) {
+        stopListening();
+        stopSpeaking();
+      }
+      return !v;
+    });
+  }, [stopListening, stopSpeaking]);
+
+  // Auto-submit voice transcript when recognition ends
+  const transcriptRef = useRef("");
+  transcriptRef.current = transcript;
+  const wasListeningRef = useRef(false);
+
+  useEffect(() => {
+    if (isListening) {
+      wasListeningRef.current = true;
+    } else if (wasListeningRef.current) {
+      wasListeningRef.current = false;
+      const t = transcriptRef.current.trim();
+      if (t) {
+        handleChatSubmit(t);
+        resetTranscript();
+      }
+    }
+  }, [isListening, resetTranscript]);
+
+  // Auto-speak Clippy's messages when voice mode is on
+  const prevMessageRef = useRef(clippyMessage);
+  useEffect(() => {
+    if (voiceEnabled && clippyMessage !== prevMessageRef.current) {
+      if (clippyMessage !== "Hmm, let me think...") {
+        speak(clippyMessage);
+      }
+    }
+    prevMessageRef.current = clippyMessage;
+  }, [clippyMessage, voiceEnabled, speak]);
 
   // Trigger spreadsheet AI reactions when data changes
   useEffect(() => {
@@ -279,6 +349,12 @@ export default function AnnoyingClippy() {
                 onMinimize={handleMinimize}
                 onChatSubmit={handleChatSubmit}
                 isChatLoading={isChatLoading}
+                voiceEnabled={voiceEnabled}
+                onVoiceToggle={handleVoiceToggle}
+                isListening={isListening}
+                onMicClick={handleMicClick}
+                isSpeaking={isSpeaking}
+                voiceSupported={voiceSupported}
               />
             )}
 

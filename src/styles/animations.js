@@ -24,6 +24,10 @@ export const ANIMATION_STYLES = `
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  @keyframes micPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(244,67,54,0.4); transform: scale(1); }
+    50% { box-shadow: 0 0 0 8px rgba(244,67,54,0); transform: scale(1.05); }
+  }
   textarea::placeholder {
     color: rgba(255,255,255,0.25);
     font-style: italic;
