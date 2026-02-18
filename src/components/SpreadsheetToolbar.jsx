@@ -27,8 +27,8 @@ export default function SpreadsheetToolbar({
   };
 
   const btnStyle = (active) => ({
-    padding: "4px 12px",
-    fontSize: 11,
+    padding: "6px 14px",
+    fontSize: 13,
     fontWeight: active ? 600 : 400,
     border: active ? "1px solid #9C27B0" : "1px solid rgba(255,255,255,0.12)",
     background: active ? "rgba(156,39,176,0.25)" : "rgba(255,255,255,0.04)",
@@ -44,8 +44,8 @@ export default function SpreadsheetToolbar({
       alignItems: "center",
       gap: 8,
       marginBottom: 12,
-      padding: "6px 8px",
-      background: "rgba(0,0,0,0.2)",
+      padding: "8px 10px",
+      background: "rgba(0,0,0,0.3)",
       borderRadius: 8,
       border: "1px solid rgba(255,255,255,0.06)",
     }}>
@@ -55,7 +55,7 @@ export default function SpreadsheetToolbar({
         color: "#CE93D8",
         padding: "3px 10px",
         borderRadius: 6,
-        fontSize: 12,
+        fontSize: 14,
         fontFamily: "monospace",
         fontWeight: 600,
         minWidth: 36,
@@ -73,9 +73,9 @@ export default function SpreadsheetToolbar({
         style={{
           flex: 1,
           padding: "4px 10px",
-          fontSize: 13,
+          fontSize: 15,
           fontFamily: "monospace",
-          background: "rgba(0,0,0,0.3)",
+          background: "rgba(0,0,0,0.35)",
           border: "1px solid rgba(255,255,255,0.1)",
           borderRadius: 6,
           color: "#E0E0E0",

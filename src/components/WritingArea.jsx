@@ -26,16 +26,16 @@ export default function WritingArea({ text, onTextChange, suggestion, onAcceptSu
         marginBottom: 12,
         padding: "0 4px",
       }}>
-        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, fontFamily: "monospace" }}>
+        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, fontFamily: "monospace" }}>
           📝 essay_final_FINAL_v3_REAL.docx
         </span>
         <div style={{ display: "flex", gap: 12 }}>
           {suggestion && (
-            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontStyle: "italic" }}>
+            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, fontStyle: "italic" }}>
               Press Tab to accept suggestion
             </span>
           )}
-          <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>
+          <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>
             {wordCount} words • {charCount} chars
           </span>
         </div>
@@ -53,7 +53,7 @@ export default function WritingArea({ text, onTextChange, suggestion, onAcceptSu
               right: 0,
               bottom: 0,
               padding: 20,
-              fontSize: 15,
+              fontSize: 17,
               lineHeight: 1.8,
               fontFamily: "'Georgia', serif",
               color: "transparent",
@@ -80,13 +80,13 @@ export default function WritingArea({ text, onTextChange, suggestion, onAcceptSu
           placeholder="Start writing your assignment here... Clippy is watching. Always watching. 👀"
           style={{
             width: "100%",
-            minHeight: 340,
-            padding: 20,
-            fontSize: 15,
+            minHeight: 400,
+            padding: 22,
+            fontSize: 17,
             lineHeight: 1.8,
             borderRadius: 10,
             border: "1px solid rgba(255,255,255,0.1)",
-            background: "rgba(0,0,0,0.3)",
+            background: "rgba(0,0,0,0.4)",
             color: "#E0E0E0",
             resize: "vertical",
             outline: "none",

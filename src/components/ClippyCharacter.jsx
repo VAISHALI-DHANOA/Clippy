@@ -31,7 +31,7 @@ export default function ClippyCharacter({ expression }) {
   const mouth = MOUTH_VARIANTS[expr.mouth];
 
   return (
-    <svg viewBox="0 0 88 90" style={{ width: 88, height: 90 }}>
+    <svg viewBox="0 0 88 90" style={{ width: 120, height: 123 }}>
       {/* Body - paperclip shape */}
       <path
         d="M 44 5 C 20 5 12 20 12 35 L 12 60 C 12 75 25 85 44 85 C 63 85 76 75 76 60 L 76 35 C 76 20 68 5 44 5 Z"

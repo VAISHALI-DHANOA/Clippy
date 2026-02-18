@@ -5,14 +5,11 @@ import WritingArea from "./WritingArea.jsx";
 import SpreadsheetArea, { createEmptyGrid, serializeSpreadsheetForAI } from "./SpreadsheetArea.jsx";
 import DashboardArea from "./DashboardArea.jsx";
 import { useClippyReactions } from "../hooks/useClippyReactions.js";
-import { useQuiz } from "../hooks/useQuiz.js";
-import { useIdleDetection } from "../hooks/useIdleDetection.js";
 import { useTextSuggestion } from "../hooks/useTextSuggestion.js";
 import { useSpreadsheetReactions } from "../hooks/useSpreadsheetReactions.js";
 import { useDashboardReactions } from "../hooks/useDashboardReactions.js";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition.js";
 import { useTextToSpeech } from "../hooks/useTextToSpeech.js";
-import { CLIPPY_QUOTES, EXPRESSIONS } from "../data/quotes.js";
 import { ANIMATION_STYLES } from "../styles/animations.js";
 import { getAIChat } from "../services/aiService.js";
 
@@ -35,7 +32,6 @@ export default function AnnoyingClippy() {
   const [popupStyle, setPopupStyle] = useState("normal");
   const reactionMode = "ai";
   const [isChatLoading, setIsChatLoading] = useState(false);
-  const annoyTimerRef = useRef(null);
 
   // Spreadsheet state
   const [spreadsheetData, setSpreadsheetData] = useState(() => createEmptyGrid(10, 8));
@@ -56,8 +52,6 @@ export default function AnnoyingClippy() {
 
   // Custom hooks
   const { processTextChange } = useClippyReactions(showMessage, reactionMode);
-  const { quizActive, currentQuiz, quizResult, triggerQuiz, handleQuizAnswer } = useQuiz(showMessage);
-  useIdleDetection(text, showMessage);
   const { suggestion, clearSuggestion, acceptSuggestion } = useTextSuggestion(text);
   const { processDataChange } = useSpreadsheetReactions(showMessage);
   const { processDashboardChange } = useDashboardReactions(showMessage);
@@ -142,21 +136,6 @@ export default function AnnoyingClippy() {
     }
   }, [spreadsheetData, dashboardPanels, activeTab, processDashboardChange]);
 
-  // Random annoyance timer — reduced frequency (60-90s)
-  useEffect(() => {
-    annoyTimerRef.current = setInterval(() => {
-      if (Math.random() < 0.3) {
-        triggerQuiz();
-      } else {
-        const msg = CLIPPY_QUOTES[Math.floor(Math.random() * CLIPPY_QUOTES.length)];
-        const expr = EXPRESSIONS[Math.floor(Math.random() * EXPRESSIONS.length)];
-        showMessage(msg, expr);
-      }
-    }, 60000 + Math.random() * 30000);
-
-    return () => clearInterval(annoyTimerRef.current);
-  }, [showMessage, triggerQuiz]);
-
   const handleTextChange = (e) => {
     const newText = e.target.value;
     setText(newText);
@@ -211,7 +190,7 @@ export default function AnnoyingClippy() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)",
+      background: "linear-gradient(135deg, #050510 0%, #1a1640 50%, #12121e 100%)",
       fontFamily: "'Segoe UI', system-ui, sans-serif",
       display: "flex",
       flexDirection: "column",
@@ -232,7 +211,7 @@ export default function AnnoyingClippy() {
       {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 20, position: "relative", zIndex: 1 }}>
         <h1 style={{
-          fontSize: 36,
+          fontSize: 44,
           fontWeight: 800,
           color: "#fff",
           textShadow: "0 0 30px rgba(156,39,176,0.5), 0 0 60px rgba(156,39,176,0.2)",
@@ -241,7 +220,7 @@ export default function AnnoyingClippy() {
         }}>
           📎 Clippy 2.0
         </h1>
-        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, marginTop: 6, fontStyle: "italic" }}>
+        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, marginTop: 8, fontStyle: "italic" }}>
           Your uninvited AI study buddy • Now with 200% more unsolicited advice
         </p>
       </div>
@@ -259,8 +238,8 @@ export default function AnnoyingClippy() {
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             style={{
-              padding: "10px 28px",
-              fontSize: 14,
+              padding: "12px 32px",
+              fontSize: 16,
               fontWeight: 600,
               border: "1px solid rgba(255,255,255,0.1)",
               borderBottom: activeTab === tab.key
@@ -286,7 +265,7 @@ export default function AnnoyingClippy() {
       {/* Main content row: content area + Clippy side panel */}
       <div style={{
         width: "100%",
-        maxWidth: 1060,
+        maxWidth: 1200,
         display: "flex",
         gap: 20,
         alignItems: "flex-start",
@@ -296,9 +275,9 @@ export default function AnnoyingClippy() {
         {/* Content area */}
         <div style={{
           flex: 1,
-          background: "rgba(255,255,255,0.03)",
+          background: "rgba(0,0,0,0.35)",
           borderRadius: 16,
-          border: "1px solid rgba(255,255,255,0.08)",
+          border: "1px solid rgba(255,255,255,0.06)",
           backdropFilter: "blur(10px)",
           padding: 24,
           minWidth: 0,
@@ -329,7 +308,7 @@ export default function AnnoyingClippy() {
         {/* Clippy side panel */}
         {!isMinimized ? (
           <div style={{
-            width: 270,
+            width: 320,
             flexShrink: 0,
             display: "flex",
             flexDirection: "column",
@@ -341,10 +320,6 @@ export default function AnnoyingClippy() {
               <SpeechBubble
                 message={clippyMessage}
                 popupStyle={popupStyle}
-                quizActive={quizActive}
-                currentQuiz={currentQuiz}
-                quizResult={quizResult}
-                onQuizAnswer={handleQuizAnswer}
                 onDismiss={handleDismiss}
                 onMinimize={handleMinimize}
                 onChatSubmit={handleChatSubmit}
@@ -374,7 +349,7 @@ export default function AnnoyingClippy() {
                 color: "white",
                 borderRadius: 12,
                 padding: "2px 8px",
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: 700,
                 boxShadow: "0 2px 8px rgba(244,67,54,0.4)",
               }}>
@@ -386,8 +361,8 @@ export default function AnnoyingClippy() {
           <div
             onClick={handleMinimize}
             style={{
-              width: 50,
-              height: 50,
+              width: 60,
+              height: 60,
               borderRadius: "50%",
               background: "linear-gradient(135deg, #7B1FA2, #512DA8)",
               display: "flex",
@@ -395,7 +370,7 @@ export default function AnnoyingClippy() {
               justifyContent: "center",
               cursor: "pointer",
               boxShadow: "0 4px 15px rgba(123,31,162,0.4)",
-              fontSize: 24,
+              fontSize: 30,
               flexShrink: 0,
               animation: "clippyPulse 2s ease-in-out infinite",
             }}

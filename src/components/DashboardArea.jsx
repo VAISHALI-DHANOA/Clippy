@@ -92,15 +92,15 @@ export default function DashboardArea({ spreadsheetData, onHighlightChange, onPa
           color: "#CE93D8",
           border: "1px solid rgba(156,39,176,0.3)",
           borderRadius: 8,
-          padding: "8px 18px",
-          fontSize: 13,
+          padding: "10px 20px",
+          fontSize: 15,
           fontWeight: 600,
           cursor: "pointer",
           transition: "all 0.15s",
         }}>
           + Add Chart
         </button>
-        <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>
+        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>
           {panels.length === 0 ? "Add a chart to start exploring your data." : `${panels.length} chart${panels.length !== 1 ? "s" : ""}`}
         </span>
       </div>
@@ -142,13 +142,13 @@ export default function DashboardArea({ spreadsheetData, onHighlightChange, onPa
           alignItems: "center",
           justifyContent: "center",
           padding: "60px 20px",
-          color: "rgba(255,255,255,0.2)",
-          fontSize: 14,
-          gap: 12,
+          color: "rgba(255,255,255,0.25)",
+          fontSize: 16,
+          gap: 14,
         }}>
-          <span style={{ fontSize: 36 }}>📊</span>
+          <span style={{ fontSize: 42 }}>📊</span>
           <span>Create interlinked charts to explore your spreadsheet data.</span>
-          <span style={{ fontSize: 11, fontStyle: "italic" }}>Hover on any chart element to highlight matching data across all charts.</span>
+          <span style={{ fontSize: 13, fontStyle: "italic" }}>Hover on any chart element to highlight matching data across all charts.</span>
         </div>
       )}
     </div>

@@ -19,15 +19,15 @@ const selectStyle = {
   color: "#CE93D8",
   border: "1px solid rgba(255,255,255,0.1)",
   borderRadius: 5,
-  padding: "3px 6px",
-  fontSize: 11,
+  padding: "4px 8px",
+  fontSize: 13,
   cursor: "pointer",
   outline: "none",
 };
 
 const colBtn = (active, color) => ({
-  padding: "2px 7px",
-  fontSize: 10,
+  padding: "3px 9px",
+  fontSize: 12,
   fontWeight: active ? 600 : 400,
   border: active ? `2px solid ${color}` : "1px solid rgba(255,255,255,0.1)",
   background: active ? `${color}22` : "rgba(255,255,255,0.04)",
@@ -180,7 +180,7 @@ export default function DashboardChart({ config, index, spreadsheetData, numCols
 
   return (
     <div style={{
-      background: "rgba(0,0,0,0.25)",
+      background: "rgba(0,0,0,0.4)",
       borderRadius: 12,
       border: "1px solid rgba(255,255,255,0.08)",
       overflow: "hidden",
@@ -234,8 +234,8 @@ export default function DashboardChart({ config, index, spreadsheetData, numCols
         gap: 4,
         alignItems: "center",
         borderBottom: "1px solid rgba(255,255,255,0.04)",
-        fontSize: 10,
-        color: "rgba(255,255,255,0.4)",
+        fontSize: 12,
+        color: "rgba(255,255,255,0.45)",
       }}>
         {(ct === "bar" || ct === "line" || ct === "pie") && (
           <>
@@ -332,7 +332,7 @@ export default function DashboardChart({ config, index, spreadsheetData, numCols
             border: "none",
             borderBottom: "1px solid rgba(255,255,255,0.04)",
             padding: "6px 12px",
-            fontSize: 11,
+            fontSize: 13,
             fontFamily: "monospace",
             resize: "vertical",
             height: 60,
@@ -344,7 +344,7 @@ export default function DashboardChart({ config, index, spreadsheetData, numCols
       {/* Chart render */}
       <div style={{ padding: 8, display: "flex", justifyContent: "center", minHeight: 180 }}>
         {!chartData ? (
-          <div style={{ padding: 20, color: "rgba(255,255,255,0.25)", fontSize: 11, fontStyle: "italic", textAlign: "center", alignSelf: "center" }}>
+          <div style={{ padding: 20, color: "rgba(255,255,255,0.3)", fontSize: 13, fontStyle: "italic", textAlign: "center", alignSelf: "center" }}>
             Configure columns above to visualize data.
           </div>
         ) : (() => {

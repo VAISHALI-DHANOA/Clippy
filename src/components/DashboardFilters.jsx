@@ -5,8 +5,8 @@ const inputStyle = {
   color: "#CE93D8",
   border: "1px solid rgba(255,255,255,0.1)",
   borderRadius: 5,
-  padding: "4px 8px",
-  fontSize: 11,
+  padding: "5px 9px",
+  fontSize: 13,
   outline: "none",
   width: 56,
 };
@@ -16,8 +16,8 @@ const btnStyle = {
   color: "#CE93D8",
   border: "1px solid rgba(156,39,176,0.3)",
   borderRadius: 5,
-  padding: "4px 10px",
-  fontSize: 11,
+  padding: "5px 12px",
+  fontSize: 13,
   cursor: "pointer",
   fontWeight: 600,
 };
@@ -60,10 +60,10 @@ export default function DashboardFilters({ filters, numCols, onChange }) {
       gap: 10,
       alignItems: "center",
       padding: "8px 12px",
-      background: "rgba(0,0,0,0.15)",
+      background: "rgba(0,0,0,0.25)",
       borderRadius: 8,
       border: "1px solid rgba(255,255,255,0.05)",
-      fontSize: 11,
+      fontSize: 13,
       color: "rgba(255,255,255,0.45)",
     }}>
       <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>Filters:</span>
@@ -109,7 +109,7 @@ export default function DashboardFilters({ filters, numCols, onChange }) {
           />
           <button
             onClick={() => removeColumnFilter(idx)}
-            style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: 13, padding: 0 }}
+            style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: 15, padding: 0 }}
           >✕</button>
         </span>
       ))}

@@ -35,9 +35,6 @@ export const ANIMATION_STYLES = `
 `;
 
 export const BUBBLE_COLORS = {
-  normal: { bg: "#FFFDE7", border: "#FDD835" },
-  quiz: { bg: "#E8EAF6", border: "#5C6BC0" },
-  correct: { bg: "#E8F5E9", border: "#66BB6A" },
-  wrong: { bg: "#FFEBEE", border: "#EF5350" },
-  ai: { bg: "#F3E5F5", border: "#AB47BC" },
+  normal: { bg: "rgba(20,18,40,0.95)", border: "rgba(156,39,176,0.4)" },
+  ai: { bg: "rgba(30,15,50,0.95)", border: "#AB47BC" },
 };

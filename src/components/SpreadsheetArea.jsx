@@ -139,14 +139,14 @@ export function serializeSpreadsheetForAI(data) {
 
 const baseCellStyle = {
   border: "1px solid rgba(255,255,255,0.08)",
-  padding: "4px 8px",
-  minWidth: 80,
-  height: 28,
+  padding: "5px 10px",
+  minWidth: 90,
+  height: 32,
   color: "#E0E0E0",
-  background: "rgba(0,0,0,0.2)",
+  background: "rgba(0,0,0,0.35)",
   cursor: "cell",
   textAlign: "right",
-  fontSize: 13,
+  fontSize: 15,
   fontFamily: "monospace",
   position: "relative",
   overflow: "hidden",
@@ -159,10 +159,10 @@ const selectedCellStyle = {
 };
 
 const headerCellStyle = {
-  background: "rgba(156,39,176,0.1)",
-  color: "rgba(255,255,255,0.5)",
-  padding: "4px 8px",
-  fontSize: 11,
+  background: "rgba(156,39,176,0.12)",
+  color: "rgba(255,255,255,0.6)",
+  padding: "5px 10px",
+  fontSize: 13,
   fontWeight: 600,
   border: "1px solid rgba(255,255,255,0.08)",
   textAlign: "center",
@@ -183,7 +183,7 @@ const cellInputStyle = {
   border: "none",
   background: "transparent",
   color: "#E0E0E0",
-  fontSize: 13,
+  fontSize: 15,
   fontFamily: "monospace",
   textAlign: "right",
   outline: "none",
@@ -492,7 +492,7 @@ export default function SpreadsheetArea({
         <div style={{
           padding: "4px 10px",
           marginBottom: 6,
-          fontSize: 11,
+          fontSize: 13,
           color: "rgba(255,255,255,0.5)",
           fontStyle: "italic",
         }}>
@@ -506,7 +506,7 @@ export default function SpreadsheetArea({
           overflowX: "auto",
           borderRadius: 10,
           border: "1px solid rgba(255,255,255,0.08)",
-          background: "rgba(0,0,0,0.15)",
+          background: "rgba(0,0,0,0.3)",
         }}
       >
         <table
@@ -565,7 +565,7 @@ export default function SpreadsheetArea({
                                 display: "flex",
                                 alignItems: "center",
                                 color: "rgba(156,39,176,0.4)",
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontFamily: "monospace",
                                 pointerEvents: "none",
                                 whiteSpace: "nowrap",
@@ -602,7 +602,7 @@ export default function SpreadsheetArea({
           onClick={addRow}
           style={{
             padding: "4px 14px",
-            fontSize: 12,
+            fontSize: 14,
             background: "rgba(255,255,255,0.04)",
             border: "1px solid rgba(255,255,255,0.1)",
             borderRadius: 6,
@@ -616,7 +616,7 @@ export default function SpreadsheetArea({
           onClick={addColumn}
           style={{
             padding: "4px 14px",
-            fontSize: 12,
+            fontSize: 14,
             background: "rgba(255,255,255,0.04)",
             border: "1px solid rgba(255,255,255,0.1)",
             borderRadius: 6,
