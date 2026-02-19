@@ -1,7 +1,16 @@
 import { useRef, useCallback } from 'react';
 import { getWordCount, getCharCount } from "../utils/textAnalysis.js";
 
-export default function WritingArea({ text, onTextChange, suggestion, onAcceptSuggestion, onClearSuggestion }) {
+export default function WritingArea({
+  text,
+  onTextChange,
+  suggestion,
+  onAcceptSuggestion,
+  onClearSuggestion,
+  documentName,
+  onLoadDemoDraft,
+  onStartBlankDraft,
+}) {
   const wordCount = getWordCount(text);
   const charCount = getCharCount(text);
   const textareaRef = useRef(null);
@@ -25,11 +34,41 @@ export default function WritingArea({ text, onTextChange, suggestion, onAcceptSu
         alignItems: "center",
         marginBottom: 12,
         padding: "0 4px",
+        gap: 12,
+        flexWrap: "wrap",
       }}>
         <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, fontFamily: "monospace" }}>
-          📝 essay_final_FINAL_v3_REAL.docx
+          📝 {documentName}
         </span>
         <div style={{ display: "flex", gap: 12 }}>
+          <button
+            onClick={onLoadDemoDraft}
+            style={{
+              background: "rgba(92,107,192,0.25)",
+              color: "#D1D9FF",
+              border: "1px solid rgba(92,107,192,0.5)",
+              borderRadius: 6,
+              padding: "4px 9px",
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
+            Load demo draft
+          </button>
+          <button
+            onClick={onStartBlankDraft}
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              color: "rgba(255,255,255,0.75)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 6,
+              padding: "4px 9px",
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
+            Start blank
+          </button>
           {suggestion && (
             <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, fontStyle: "italic" }}>
               Press Tab to accept suggestion

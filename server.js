@@ -38,11 +38,27 @@ app.post('/api/clippy-reaction', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 80,
-        system: `You are Clippy, a sassy AI writing assistant. Give ONE short, specific suggestion about the student's writing. Max 1 sentence. Reference what they wrote. Be playful but useful.`,
+        max_tokens: 180,
+        system: `You are Clippy, a provocative writing coach.
+Return exactly 3 short "possible directions" that push the student to think harder.
+Each direction must do at least one of:
+- challenge an assumption
+- introduce a counterargument
+- suggest a sharper lens or stake
+- request missing evidence
+
+Output format (exactly):
+1) ...
+2) ...
+3) ...
+
+Rules:
+- Keep each line under 10 words.
+- Make each line specific to the user's topic.
+- No praise, no filler, no intro sentence.`,
         messages: [{
           role: 'user',
-          content: `Analyze this student's writing and give ONE specific, actionable suggestion about their content, structure, or style. Be helpful but playful:\n\n"${text.slice(-500)}"`
+          content: `Student writing sample:\n\n"${text.slice(-900)}"\n\nGive provocative possible directions.`
         }]
       })
     });
@@ -84,8 +100,20 @@ app.post('/api/clippy-chat', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 80,
-        system: `You are Clippy, a sassy AI assistant. Answer the user's question in 1 sentence. Be witty and useful. Never ramble.`,
+        max_tokens: 180,
+        system: `You are Clippy, a provocative AI study buddy.
+Give a direct answer, then push deeper thinking with multiple angles.
+
+Output format (exactly):
+Answer: <one short sentence>
+1) <possible direction>
+2) <possible direction>
+3) <possible direction>
+
+Rules:
+- Keep each direction under 10 words.
+- Base directions on the user's question and document context if provided.
+- Prioritize challenge, tradeoffs, and stronger framing over generic tips.`,
         messages: [
           ...(text ? [{
             role: 'user',
@@ -139,8 +167,12 @@ app.post('/api/clippy-suggestion', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 40,
-        system: `You are a writing autocomplete assistant. Continue the user's text naturally with a short phrase (5-15 words). Output ONLY the continuation text — no explanations, no quotes, no prefix. Match the user's style and tone exactly.`,
+        max_tokens: 60,
+        system: `You are a provocative writing autocomplete assistant.
+Continue the user's text naturally with a short phrase (6-10 words) that nudges deeper thinking.
+Prefer one of: sharper claim, caveat, counterargument, or evidence direction.
+Output ONLY the continuation text — no explanations, no quotes, no prefix.
+Match the user's style and tone.`,
         messages: [{
           role: 'user',
           content: text.slice(-300)

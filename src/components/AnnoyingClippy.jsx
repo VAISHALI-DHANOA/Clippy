@@ -11,6 +11,7 @@ import { useDashboardReactions } from "../hooks/useDashboardReactions.js";
 import { useRealtimeVoice } from "../hooks/useRealtimeVoice.js";
 import { ANIMATION_STYLES } from "../styles/animations.js";
 import { getAIChat } from "../services/aiService.js";
+import { WRITING_DEMO } from "../data/writingDemo.js";
 
 const TABS = [
   { key: "writing", label: "Writing" },
@@ -20,7 +21,8 @@ const TABS = [
 
 export default function AnnoyingClippy() {
   const [activeTab, setActiveTab] = useState("writing");
-  const [text, setText] = useState("");
+  const [text, setText] = useState(WRITING_DEMO.text);
+  const [documentName, setDocumentName] = useState(WRITING_DEMO.fileName);
   const [clippyMessage, setClippyMessage] = useState("Hi! I'm Clippy! I'm here to help. You cannot escape me.");
   const [expression, setExpression] = useState("happy");
   const [isVisible, setIsVisible] = useState(true);
@@ -130,6 +132,21 @@ export default function AnnoyingClippy() {
     setText(newText);
     processTextChange(newText);
   };
+
+  const handleLoadDemoDraft = useCallback(() => {
+    setText(WRITING_DEMO.text);
+    setDocumentName(WRITING_DEMO.fileName);
+    clearSuggestion();
+    processTextChange(WRITING_DEMO.text);
+    showMessage("Demo draft loaded. Pick one direction and push it hard.", "winking", "ai");
+  }, [clearSuggestion, processTextChange, showMessage]);
+
+  const handleStartBlankDraft = useCallback(() => {
+    setText("");
+    setDocumentName("untitled_argument_draft.md");
+    clearSuggestion();
+    showMessage("Blank page activated. No excuses now.", "mischievous");
+  }, [clearSuggestion, showMessage]);
 
   const handleAcceptSuggestion = () => {
     const accepted = acceptSuggestion();
@@ -278,6 +295,9 @@ export default function AnnoyingClippy() {
               suggestion={suggestion}
               onAcceptSuggestion={handleAcceptSuggestion}
               onClearSuggestion={clearSuggestion}
+              documentName={documentName}
+              onLoadDemoDraft={handleLoadDemoDraft}
+              onStartBlankDraft={handleStartBlankDraft}
             />
           ) : activeTab === "spreadsheet" ? (
             <SpreadsheetArea
