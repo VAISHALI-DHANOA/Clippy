@@ -1,6 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
-const TTS_URL = "http://localhost:3003/api/tts";
+const isLocalHost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL || (isLocalHost ? "http://localhost:3003" : "")).replace(/\/$/, "");
+const TTS_URL = `${API_BASE_URL}/api/tts`;
 
 export function useTextToSpeech() {
   const [isSpeaking, setIsSpeaking] = useState(false);

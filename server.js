@@ -2,14 +2,18 @@ import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Load environment variables from .env file
 dotenv.config();
 
 const app = express();
-const PORT = 3003;
+const PORT = process.env.PORT || 3003;
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Middleware
 app.use(cors());
@@ -499,8 +503,17 @@ app.post('/api/realtime-session', async (req, res) => {
   }
 });
 
+// Serve built frontend from the same server in production
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, 'dist');
+  app.use(express.static(distPath));
+  app.get(/^\/(?!api).*/, (_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
 app.listen(PORT, () => {
-  console.log(`✅ Clippy backend server running on http://localhost:${PORT}`);
-  console.log(`🔗 Frontend should call: http://localhost:${PORT}/api/clippy-reaction`);
+  console.log(`✅ Clippy server running on port ${PORT}`);
+  console.log(`🔗 API endpoint: /api/clippy-reaction`);
   console.log(`🔑 API Key loaded: ${CLAUDE_API_KEY ? 'Yes' : 'No (check .env file)'}`);
 });

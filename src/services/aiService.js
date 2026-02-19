@@ -1,9 +1,12 @@
-// Use local backend server to avoid CORS issues
-const BACKEND_URL = "http://localhost:3003/api/clippy-reaction";
-const SUGGESTION_URL = "http://localhost:3003/api/clippy-suggestion";
-const SPREADSHEET_URL = "http://localhost:3003/api/clippy-spreadsheet";
-const CELL_SUGGEST_URL = "http://localhost:3003/api/clippy-cell-suggest";
-const DASHBOARD_URL = "http://localhost:3003/api/clippy-dashboard";
+const isLocalHost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL || (isLocalHost ? "http://localhost:3003" : "")).replace(/\/$/, "");
+
+function apiUrl(path) {
+  return `${API_BASE_URL}${path}`;
+}
 
 export async function getAIReaction(userText, options = {}) {
   if (userText.length < 20) {
@@ -11,7 +14,7 @@ export async function getAIReaction(userText, options = {}) {
   }
 
   // Call our backend server instead of Anthropic directly
-  const response = await fetch(BACKEND_URL, {
+  const response = await fetch(apiUrl("/api/clippy-reaction"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -33,7 +36,7 @@ export async function getAIReaction(userText, options = {}) {
 
 export async function getAIChat(documentText, userMessage, options = {}) {
   try {
-    const response = await fetch("http://localhost:3003/api/clippy-chat", {
+    const response = await fetch(apiUrl("/api/clippy-chat"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: documentText, message: userMessage, ...options }),
@@ -52,7 +55,7 @@ export async function getSpreadsheetReaction(tableData, selectedCell) {
     throw new Error("Invalid parameters");
   }
 
-  const response = await fetch(SPREADSHEET_URL, {
+  const response = await fetch(apiUrl("/api/clippy-spreadsheet"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ tableData, selectedCell }),
@@ -69,7 +72,7 @@ export async function getSpreadsheetReaction(tableData, selectedCell) {
 
 export async function getCellSuggestion(tableData, cellRef, currentValue) {
   try {
-    const response = await fetch(CELL_SUGGEST_URL, {
+    const response = await fetch(apiUrl("/api/clippy-cell-suggest"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tableData, cellRef, currentValue }),
@@ -89,7 +92,7 @@ export async function getTextSuggestion(userText, previousSuggestion = "", optio
   }
 
   try {
-    const response = await fetch(SUGGESTION_URL, {
+    const response = await fetch(apiUrl("/api/clippy-suggestion"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -118,7 +121,7 @@ export async function getDashboardReaction(tableData, dashboardConfig) {
     throw new Error("Invalid parameters");
   }
 
-  const response = await fetch(DASHBOARD_URL, {
+  const response = await fetch(apiUrl("/api/clippy-dashboard"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ tableData, dashboardConfig }),

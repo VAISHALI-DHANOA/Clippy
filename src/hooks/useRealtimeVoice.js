@@ -1,6 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
-const SESSION_URL = "http://localhost:3003/api/realtime-session";
+const isLocalHost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL || (isLocalHost ? "http://localhost:3003" : "")).replace(/\/$/, "");
+const SESSION_URL = `${API_BASE_URL}/api/realtime-session`;
 const REALTIME_URL = "https://api.openai.com/v1/realtime";
 const MODEL = "gpt-4o-mini-realtime-preview";
 
