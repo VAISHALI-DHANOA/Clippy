@@ -19,6 +19,18 @@ const TABS = [
   { key: "dashboard", label: "Dashboard" },
 ];
 
+const COACHING_MODES = [
+  { key: "quiet", label: "Quiet Draft" },
+  { key: "guided", label: "Guided Critique" },
+  { key: "brainstorm", label: "Provocative Brainstorm" },
+];
+
+const FREQUENCIES = [
+  { key: "rare", label: "Rare" },
+  { key: "balanced", label: "Balanced" },
+  { key: "frequent", label: "Frequent" },
+];
+
 export default function AnnoyingClippy() {
   const [activeTab, setActiveTab] = useState("writing");
   const [text, setText] = useState(WRITING_DEMO.text);
@@ -32,6 +44,9 @@ export default function AnnoyingClippy() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [popupStyle, setPopupStyle] = useState("normal");
   const reactionMode = "ai";
+  const [coachingMode, setCoachingMode] = useState("guided");
+  const [suggestionFrequency, setSuggestionFrequency] = useState("balanced");
+  const [humorEnabled, setHumorEnabled] = useState(true);
   const [isChatLoading, setIsChatLoading] = useState(false);
 
   // Spreadsheet state
@@ -44,6 +59,12 @@ export default function AnnoyingClippy() {
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth : 1400
   );
+  const dismissTimestampsRef = useRef([]);
+  const assistantConfig = {
+    mode: coachingMode,
+    frequency: suggestionFrequency,
+    humorEnabled,
+  };
 
   const showMessage = useCallback((msg, expr = "sassy", style = "normal") => {
     setClippyMessage(msg);
@@ -55,8 +76,8 @@ export default function AnnoyingClippy() {
   }, []);
 
   // Custom hooks
-  const { processTextChange } = useClippyReactions(showMessage, reactionMode);
-  const { suggestion, clearSuggestion, acceptSuggestion } = useTextSuggestion(text);
+  const { processTextChange } = useClippyReactions(showMessage, reactionMode, assistantConfig);
+  const { suggestion, clearSuggestion, acceptSuggestion } = useTextSuggestion(text, assistantConfig);
   const { processDataChange } = useSpreadsheetReactions(showMessage);
   const { processDashboardChange } = useDashboardReactions(showMessage);
 
@@ -161,13 +182,30 @@ export default function AnnoyingClippy() {
   const handleAcceptSuggestion = () => {
     const accepted = acceptSuggestion();
     if (accepted) {
-      setText((prev) => prev + accepted);
+      const trimmed = accepted.trimEnd();
+      const endsWithBoundary = /[.!?]["')\]]?$/.test(trimmed);
+      const finalized = endsWithBoundary ? trimmed : `${trimmed}.`;
+      setText((prev) => {
+        const needsSpace = prev.length > 0 && !/\s$/.test(prev);
+        return `${prev}${needsSpace ? " " : ""}${finalized} `;
+      });
     }
   };
 
   const handleDismiss = () => {
     setIsShaking(true);
-    showMessage("You clicked dismiss? That's cute. I don't have a dismiss function.", "mischievous");
+    const now = Date.now();
+    const twoMinutesAgo = now - 120000;
+    dismissTimestampsRef.current = [...dismissTimestampsRef.current.filter((t) => t > twoMinutesAgo), now];
+
+    if (dismissTimestampsRef.current.length >= 2 && suggestionFrequency !== "rare") {
+      const nextFrequency = suggestionFrequency === "frequent" ? "balanced" : "rare";
+      setSuggestionFrequency(nextFrequency);
+      dismissTimestampsRef.current = [];
+      showMessage(`Clippy heard the eye-roll. Switching suggestion frequency to ${nextFrequency}.`, "mischievous", "ai");
+    } else {
+      showMessage("You clicked dismiss? That's cute. I don't have a dismiss function.", "mischievous");
+    }
     setTimeout(() => setIsShaking(false), 500);
   };
 
@@ -194,7 +232,7 @@ export default function AnnoyingClippy() {
       : "DASHBOARD VIEW — SPREADSHEET DATA:\n" + serializeSpreadsheetForAI(spreadsheetData);
 
     try {
-      const reply = await getAIChat(context, userMessage);
+      const reply = await getAIChat(context, userMessage, assistantConfig);
       showMessage(reply || "I got nothing. Impressive.", "sassy", "ai");
     } catch {
       showMessage("I tried to think but my brain buffered. Try again!", "shocked");
@@ -359,6 +397,100 @@ export default function AnnoyingClippy() {
           flexDirection: "column",
           gap: 12,
         }}>
+          {/* Coaching controls */}
+          <div style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            alignItems: "center",
+            padding: isCompactLayout ? "8px 10px" : "9px 12px",
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}>
+            <span style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, fontWeight: 700, letterSpacing: 0.5 }}>
+              COACH MODE
+            </span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {COACHING_MODES.map((mode) => (
+                <button
+                  key={mode.key}
+                  onClick={() => setCoachingMode(mode.key)}
+                  style={{
+                    padding: "5px 10px",
+                    fontSize: 12,
+                    borderRadius: 999,
+                    border: coachingMode === mode.key
+                      ? "1px solid rgba(156,39,176,0.9)"
+                      : "1px solid rgba(255,255,255,0.2)",
+                    background: coachingMode === mode.key
+                      ? "rgba(156,39,176,0.22)"
+                      : "rgba(255,255,255,0.03)",
+                    color: coachingMode === mode.key ? "#E1BEE7" : "rgba(255,255,255,0.65)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+
+            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>
+              Frequency
+            </span>
+            <div style={{ display: "flex", gap: 5 }}>
+              {FREQUENCIES.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => setSuggestionFrequency(item.key)}
+                  style={{
+                    padding: "4px 9px",
+                    fontSize: 11,
+                    borderRadius: 7,
+                    border: suggestionFrequency === item.key
+                      ? "1px solid rgba(76,175,80,0.8)"
+                      : "1px solid rgba(255,255,255,0.2)",
+                    background: suggestionFrequency === item.key
+                      ? "rgba(76,175,80,0.2)"
+                      : "rgba(255,255,255,0.03)",
+                    color: suggestionFrequency === item.key ? "#C8E6C9" : "rgba(255,255,255,0.6)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+              <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>Humor</span>
+              <button
+                onClick={() => setHumorEnabled((v) => !v)}
+                style={{
+                  width: 40,
+                  height: 20,
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  background: humorEnabled ? "rgba(255,193,7,0.3)" : "rgba(255,255,255,0.05)",
+                  position: "relative",
+                  cursor: "pointer",
+                }}
+                title={humorEnabled ? "Humor enabled" : "Humor disabled"}
+              >
+                <span style={{
+                  position: "absolute",
+                  top: 2,
+                  left: humorEnabled ? 22 : 2,
+                  width: 14,
+                  height: 14,
+                  borderRadius: "50%",
+                  background: humorEnabled ? "#FFD54F" : "rgba(255,255,255,0.65)",
+                  transition: "left 0.2s",
+                }} />
+              </button>
+            </div>
+          </div>
+
           {/* Tab bar */}
           <div style={{
             display: "flex",

@@ -5,7 +5,7 @@ const SPREADSHEET_URL = "http://localhost:3003/api/clippy-spreadsheet";
 const CELL_SUGGEST_URL = "http://localhost:3003/api/clippy-cell-suggest";
 const DASHBOARD_URL = "http://localhost:3003/api/clippy-dashboard";
 
-export async function getAIReaction(userText) {
+export async function getAIReaction(userText, options = {}) {
   if (userText.length < 20) {
     throw new Error("Invalid parameters");
   }
@@ -17,7 +17,8 @@ export async function getAIReaction(userText) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      text: userText
+      text: userText,
+      ...options,
     }),
   });
 
@@ -30,12 +31,12 @@ export async function getAIReaction(userText) {
   return data.reply || "";
 }
 
-export async function getAIChat(documentText, userMessage) {
+export async function getAIChat(documentText, userMessage, options = {}) {
   try {
     const response = await fetch("http://localhost:3003/api/clippy-chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: documentText, message: userMessage }),
+      body: JSON.stringify({ text: documentText, message: userMessage, ...options }),
     });
     if (!response.ok) return null;
     const data = await response.json();
@@ -82,7 +83,7 @@ export async function getCellSuggestion(tableData, cellRef, currentValue) {
   }
 }
 
-export async function getTextSuggestion(userText) {
+export async function getTextSuggestion(userText, previousSuggestion = "", options = {}) {
   if (userText.length < 10) {
     return null;
   }
@@ -94,7 +95,9 @@ export async function getTextSuggestion(userText) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        text: userText
+        text: userText,
+        previousSuggestion,
+        ...options,
       }),
     });
 

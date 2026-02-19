@@ -15,10 +15,31 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 app.use(cors());
 app.use(express.json());
 
+const MODE_RULES = {
+  quiet: { cardCount: 1 },
+  guided: { cardCount: 2 },
+  brainstorm: { cardCount: 3 },
+};
+
+function normalizeMode(mode) {
+  return MODE_RULES[mode] ? mode : 'guided';
+}
+
+function normalizeFrequency(frequency) {
+  if (frequency === 'rare' || frequency === 'balanced' || frequency === 'frequent') {
+    return frequency;
+  }
+  return 'balanced';
+}
+
+function normalizeHumorEnabled(value) {
+  return value !== false;
+}
+
 // Proxy endpoint for Claude API
 app.post('/api/clippy-reaction', async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, mode, frequency, humorEnabled } = req.body;
 
     if (!CLAUDE_API_KEY) {
       return res.status(500).json({ error: 'API key not configured in .env file' });
@@ -27,6 +48,12 @@ app.post('/api/clippy-reaction', async (req, res) => {
     if (!text) {
       return res.status(400).json({ error: 'Missing text' });
     }
+
+    const normalizedMode = normalizeMode(mode);
+    const normalizedFrequency = normalizeFrequency(frequency);
+    const shouldUseHumor = normalizeHumorEnabled(humorEnabled) && normalizedMode === 'brainstorm';
+    const cardCount = MODE_RULES[normalizedMode].cardCount;
+    const usefulCount = shouldUseHumor ? cardCount - 1 : cardCount;
 
     // Call Anthropic API from server-side (no CORS issues)
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -38,24 +65,31 @@ app.post('/api/clippy-reaction', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 180,
-        system: `You are Clippy, a provocative writing coach.
-Return exactly 3 short "possible directions" that push the student to think harder.
-Each direction must do at least one of:
-- challenge an assumption
-- introduce a counterargument
-- suggest a sharper lens or stake
-- request missing evidence
+        max_tokens: 200,
+        system: `You are Clippy, a writing coach.
+Return exactly ${cardCount} suggestion cards.
+Output format for every line:
+<emoji> <Context Heading>: <one short suggestion sentence>
 
-Output format (exactly):
-1) ...
-2) ...
-3) ...
+Heading rules:
+- Heading must be auto-generated from the line content.
+- Heading must be 2-5 words, title case, no punctuation, max 24 chars.
+- Use concrete labels (example style: "Weak Evidence", "Scope Too Broad", "Missing Stakes").
+- Never use generic headings like "Suggestion", "Tip", "Idea", "Feedback".
 
-Rules:
-- Keep each line under 10 words.
-- Make each line specific to the user's topic.
-- No praise, no filler, no intro sentence.`,
+Body rules:
+- Keep each suggestion concise, specific, and tied to the user's text.
+- Line length should stay compact and scannable.
+- No numbering, no bullet markers, no intro/outro text.
+
+Mode context:
+- Mode: ${normalizedMode}
+- Frequency preference: ${normalizedFrequency}
+- Useful cards required: ${usefulCount}
+- Humor allowed on last card: ${shouldUseHumor ? 'yes' : 'no'}
+
+If humor is allowed, only the final card may be funny/snarky and intentionally non-actionable, while still context-aware.
+All other cards must be genuinely useful.`,
         messages: [{
           role: 'user',
           content: `Student writing sample:\n\n"${text.slice(-900)}"\n\nGive provocative possible directions.`
@@ -81,7 +115,7 @@ Rules:
 // Chat endpoint — user talks directly to Clippy
 app.post('/api/clippy-chat', async (req, res) => {
   try {
-    const { text, message } = req.body;
+    const { text, message, mode, frequency, humorEnabled } = req.body;
 
     if (!CLAUDE_API_KEY) {
       return res.status(500).json({ error: 'API key not configured in .env file' });
@@ -90,6 +124,12 @@ app.post('/api/clippy-chat', async (req, res) => {
     if (!message) {
       return res.status(400).json({ error: 'Missing message' });
     }
+
+    const normalizedMode = normalizeMode(mode);
+    const normalizedFrequency = normalizeFrequency(frequency);
+    const shouldUseHumor = normalizeHumorEnabled(humorEnabled) && normalizedMode === 'brainstorm';
+    const cardCount = MODE_RULES[normalizedMode].cardCount;
+    const usefulCount = shouldUseHumor ? cardCount - 1 : cardCount;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -100,20 +140,26 @@ app.post('/api/clippy-chat', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 180,
-        system: `You are Clippy, a provocative AI study buddy.
-Give a direct answer, then push deeper thinking with multiple angles.
+        max_tokens: 220,
+        system: `You are Clippy, a writing coach.
+Return exactly ${cardCount} response cards.
+Each line format:
+<emoji> <Context Heading>: <one short sentence>
 
-Output format (exactly):
-Answer: <one short sentence>
-1) <possible direction>
-2) <possible direction>
-3) <possible direction>
+Card requirements:
+- At least one useful card must directly answer the user's question.
+- Remaining useful cards should challenge assumptions, add tradeoffs, or request evidence.
+- If humor is allowed, only the final card may be playful/non-actionable.
 
-Rules:
-- Keep each direction under 10 words.
-- Base directions on the user's question and document context if provided.
-- Prioritize challenge, tradeoffs, and stronger framing over generic tips.`,
+Heading rules:
+- Auto-generate headings from each line's content.
+- 2-5 words, title case, max 24 chars, no punctuation.
+- Never use generic labels like "Suggestion", "Tip", "Answer", or "Feedback".
+
+Style rules:
+- Keep lines concise and context-specific.
+- No numbering, bullets, or extra prose.
+- Mode: ${normalizedMode}, Frequency: ${normalizedFrequency}, Useful cards required: ${usefulCount}, Humor on final card: ${shouldUseHumor ? 'yes' : 'no'}.`,
         messages: [
           ...(text ? [{
             role: 'user',
@@ -148,7 +194,7 @@ Rules:
 // Text completion/suggestion endpoint
 app.post('/api/clippy-suggestion', async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, previousSuggestion, mode, frequency } = req.body;
 
     if (!CLAUDE_API_KEY) {
       return res.status(500).json({ error: 'API key not configured in .env file' });
@@ -157,6 +203,13 @@ app.post('/api/clippy-suggestion', async (req, res) => {
     if (!text) {
       return res.status(400).json({ error: 'Missing text' });
     }
+
+    const fullText = String(text);
+    const paragraphs = fullText.split(/\n\s*\n/).filter(Boolean);
+    const currentParagraph = (paragraphs[paragraphs.length - 1] || fullText).slice(-450);
+    const recentContext = fullText.slice(-1200);
+    const normalizedMode = normalizeMode(mode);
+    const normalizedFrequency = normalizeFrequency(frequency);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -169,13 +222,25 @@ app.post('/api/clippy-suggestion', async (req, res) => {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 60,
         system: `You are a provocative writing autocomplete assistant.
-Continue the user's text naturally with a short phrase (6-10 words) that nudges deeper thinking.
+Continue with exactly one complete sentence (8-16 words) that nudges deeper thinking.
+If the user's text ends mid-sentence, finish that sentence cleanly.
+If the user's text already ends a sentence, start the next sentence with a fresh direction.
 Prefer one of: sharper claim, caveat, counterargument, or evidence direction.
+Anchor your continuation in the current paragraph while staying consistent with recent document context.
+Avoid repeating the previous suggestion wording if one is provided.
+Your sentence must end with punctuation (. ! or ?).
 Output ONLY the continuation text — no explanations, no quotes, no prefix.
-Match the user's style and tone.`,
+Match the user's style and tone.
+
+Mode: ${normalizedMode}
+Frequency preference: ${normalizedFrequency}
+Mode behavior:
+- quiet: choose lower-risk, clarifying continuations.
+- guided: choose argument-strengthening continuations.
+- brainstorm: choose bolder, exploratory continuations.`,
         messages: [{
           role: 'user',
-          content: text.slice(-300)
+          content: `Recent context:\n${recentContext}\n\nCurrent paragraph:\n${currentParagraph}\n\nPrevious suggestion (avoid repeating): ${previousSuggestion || '(none)'}\n\nContinue from the final line.`
         }]
       })
     });

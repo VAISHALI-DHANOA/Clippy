@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BUBBLE_COLORS } from "../styles/animations.js";
 
 export default function SpeechBubble({
@@ -21,7 +21,32 @@ export default function SpeechBubble({
   voiceError,
 }) {
   const [chatInput, setChatInput] = useState("");
+  const [cardFeedback, setCardFeedback] = useState({});
   const bubbleColors = BUBBLE_COLORS[popupStyle] || BUBBLE_COLORS.normal;
+
+  useEffect(() => {
+    setCardFeedback({});
+  }, [message]);
+  const structuredMessage = useMemo(() => {
+    if (popupStyle !== "ai") return null;
+    const lines = String(message || "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (lines.length < 1) return null;
+
+    const parsed = lines.map((line) => {
+      const match = line.match(/^(\S+)\s+([^:]+):\s*(.+)$/u);
+      if (!match) return null;
+      return {
+        icon: match[1],
+        heading: match[2].trim(),
+        body: match[3].trim(),
+      };
+    });
+
+    return parsed.every(Boolean) ? parsed : null;
+  }, [message, popupStyle]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -47,15 +72,85 @@ export default function SpeechBubble({
       position: "relative",
       animation: "fadeIn 0.3s ease",
     }}>
-      <p style={{
-        margin: 0,
-        fontSize: 15,
-        lineHeight: 1.6,
-        color: "#E0E0E0",
-        whiteSpace: "pre-line",
-      }}>
-        {message}
-      </p>
+      {structuredMessage ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {structuredMessage.map((item, idx) => (
+            <div
+              key={`${item.heading}-${idx}`}
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 10,
+                padding: "8px 10px",
+              }}
+            >
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                color: "rgba(255,255,255,0.85)",
+                marginBottom: 3,
+              }}>
+                <span style={{ fontSize: 16, lineHeight: 1 }}>{item.icon}</span>
+                <span style={{
+                  fontSize: 11,
+                  letterSpacing: 0.6,
+                  textTransform: "uppercase",
+                  fontWeight: 700,
+                  color: "rgba(206,147,216,0.95)",
+                }}>
+                  {item.heading}
+                </span>
+              </div>
+              <div style={{
+                margin: 0,
+                fontSize: 14,
+                lineHeight: 1.45,
+                color: "#E0E0E0",
+              }}>
+                {item.body}
+              </div>
+              <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                {["Useful", "Not useful", "Less like this"].map((label) => {
+                  const key = `${idx}:${label}`;
+                  const active = cardFeedback[idx] === label;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setCardFeedback((prev) => ({ ...prev, [idx]: label }))}
+                      style={{
+                        padding: "3px 7px",
+                        borderRadius: 999,
+                        border: active
+                          ? "1px solid rgba(156,39,176,0.85)"
+                          : "1px solid rgba(255,255,255,0.2)",
+                        background: active
+                          ? "rgba(156,39,176,0.2)"
+                          : "rgba(255,255,255,0.03)",
+                        color: active ? "#E1BEE7" : "rgba(255,255,255,0.55)",
+                        fontSize: 10,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p style={{
+          margin: 0,
+          fontSize: 15,
+          lineHeight: 1.6,
+          color: "#E0E0E0",
+          whiteSpace: "pre-line",
+        }}>
+          {message}
+        </p>
+      )}
 
       {/* Live user transcript */}
       {voiceEnabled && voiceConnected && userTranscript && (
