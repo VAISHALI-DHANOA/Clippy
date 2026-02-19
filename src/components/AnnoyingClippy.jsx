@@ -8,8 +8,7 @@ import { useClippyReactions } from "../hooks/useClippyReactions.js";
 import { useTextSuggestion } from "../hooks/useTextSuggestion.js";
 import { useSpreadsheetReactions } from "../hooks/useSpreadsheetReactions.js";
 import { useDashboardReactions } from "../hooks/useDashboardReactions.js";
-import { useSpeechRecognition } from "../hooks/useSpeechRecognition.js";
-import { useTextToSpeech } from "../hooks/useTextToSpeech.js";
+import { useRealtimeVoice } from "../hooks/useRealtimeVoice.js";
 import { ANIMATION_STYLES } from "../styles/animations.js";
 import { getAIChat } from "../services/aiService.js";
 
@@ -56,71 +55,61 @@ export default function AnnoyingClippy() {
   const { processDataChange } = useSpreadsheetReactions(showMessage);
   const { processDashboardChange } = useDashboardReactions(showMessage);
 
-  // Voice hooks
+  // Realtime voice hook
   const {
-    isListening,
-    transcript,
-    isSupported: sttSupported,
-    startListening,
-    stopListening,
-    resetTranscript,
-  } = useSpeechRecognition();
-  const {
-    isSpeaking,
-    isSupported: ttsSupported,
-    speak,
-    stop: stopSpeaking,
-  } = useTextToSpeech();
-  const voiceSupported = sttSupported || ttsSupported;
+    isConnected: voiceConnected,
+    isConnecting: voiceConnecting,
+    connect: connectVoice,
+    disconnect: disconnectVoice,
+    isUserSpeaking,
+    isClippySpeaking,
+    userTranscript,
+    clippyTranscript,
+    updateContext: updateVoiceContext,
+    toggleMute,
+    isMuted,
+    error: voiceError,
+  } = useRealtimeVoice();
+  const voiceSupported = !!navigator.mediaDevices?.getUserMedia;
+
+  const getDocumentContext = useCallback(() => {
+    if (activeTab === "writing") return text;
+    if (activeTab === "spreadsheet") return "SPREADSHEET DATA:\n" + serializeSpreadsheetForAI(spreadsheetData);
+    return "DASHBOARD VIEW — SPREADSHEET DATA:\n" + serializeSpreadsheetForAI(spreadsheetData);
+  }, [activeTab, text, spreadsheetData]);
 
   const handleMicClick = useCallback(() => {
-    if (isListening) {
-      stopListening();
-    } else {
-      stopSpeaking();
-      resetTranscript();
-      startListening();
-    }
-  }, [isListening, startListening, stopListening, resetTranscript, stopSpeaking]);
+    if (!voiceConnected) return;
+    toggleMute();
+  }, [voiceConnected, toggleMute]);
 
   const handleVoiceToggle = useCallback(() => {
-    setVoiceEnabled((v) => {
-      if (v) {
-        stopListening();
-        stopSpeaking();
-      }
-      return !v;
-    });
-  }, [stopListening, stopSpeaking]);
-
-  // Auto-submit voice transcript when recognition ends
-  const transcriptRef = useRef("");
-  transcriptRef.current = transcript;
-  const wasListeningRef = useRef(false);
-
-  useEffect(() => {
-    if (isListening) {
-      wasListeningRef.current = true;
-    } else if (wasListeningRef.current) {
-      wasListeningRef.current = false;
-      const t = transcriptRef.current.trim();
-      if (t) {
-        handleChatSubmit(t);
-        resetTranscript();
-      }
+    if (voiceEnabled) {
+      disconnectVoice();
+      setVoiceEnabled(false);
+    } else {
+      setVoiceEnabled(true);
+      connectVoice(getDocumentContext());
     }
-  }, [isListening, resetTranscript]);
+  }, [voiceEnabled, disconnectVoice, connectVoice, getDocumentContext]);
 
-  // Auto-speak Clippy's messages when voice mode is on
-  const prevMessageRef = useRef(clippyMessage);
+  // Show Clippy's realtime transcript in the speech bubble when done speaking
   useEffect(() => {
-    if (voiceEnabled && clippyMessage !== prevMessageRef.current) {
-      if (clippyMessage !== "Hmm, let me think...") {
-        speak(clippyMessage);
-      }
+    if (voiceEnabled && clippyTranscript && !isClippySpeaking) {
+      showMessage(clippyTranscript, "sassy", "ai");
     }
-    prevMessageRef.current = clippyMessage;
-  }, [clippyMessage, voiceEnabled, speak]);
+  }, [isClippySpeaking, clippyTranscript, voiceEnabled, showMessage]);
+
+  // Debounced context update for the Realtime session when document changes
+  const contextUpdateTimer = useRef(null);
+  useEffect(() => {
+    if (!voiceEnabled || !voiceConnected) return;
+    if (contextUpdateTimer.current) clearTimeout(contextUpdateTimer.current);
+    contextUpdateTimer.current = setTimeout(() => {
+      updateVoiceContext(getDocumentContext());
+    }, 2000);
+    return () => clearTimeout(contextUpdateTimer.current);
+  }, [text, spreadsheetData, activeTab, voiceEnabled, voiceConnected, updateVoiceContext, getDocumentContext]);
 
   // Trigger spreadsheet AI reactions when data changes
   useEffect(() => {
@@ -326,10 +315,15 @@ export default function AnnoyingClippy() {
                 isChatLoading={isChatLoading}
                 voiceEnabled={voiceEnabled}
                 onVoiceToggle={handleVoiceToggle}
-                isListening={isListening}
+                isListening={isUserSpeaking}
                 onMicClick={handleMicClick}
-                isSpeaking={isSpeaking}
+                isSpeaking={isClippySpeaking}
                 voiceSupported={voiceSupported}
+                voiceConnected={voiceConnected}
+                voiceConnecting={voiceConnecting}
+                isMuted={isMuted}
+                userTranscript={userTranscript}
+                voiceError={voiceError}
               />
             )}
 

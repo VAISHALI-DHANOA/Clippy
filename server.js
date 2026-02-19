@@ -353,6 +353,55 @@ app.post('/api/tts', async (req, res) => {
   }
 });
 
+// Ephemeral token for OpenAI Realtime API (WebRTC voice conversation)
+app.post('/api/realtime-session', async (req, res) => {
+  try {
+    if (!OPENAI_API_KEY) {
+      return res.status(500).json({ error: 'OPENAI_API_KEY not configured in .env file' });
+    }
+
+    const { instructions, voice } = req.body;
+
+    const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini-realtime-preview',
+        voice: voice || 'shimmer',
+        instructions: instructions || 'You are Clippy, a sassy AI assistant. Answer in 1 sentence. Be witty and useful. Never ramble.',
+        input_audio_transcription: {
+          model: 'whisper-1',
+        },
+        turn_detection: {
+          type: 'server_vad',
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 500,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('OpenAI Realtime session error:', errorData);
+      return res.status(response.status).json({ error: 'Failed to create realtime session' });
+    }
+
+    const data = await response.json();
+    res.json({
+      sessionId: data.id,
+      clientSecret: data.client_secret.value,
+      expiresAt: data.client_secret.expires_at,
+    });
+  } catch (error) {
+    console.error('Error creating realtime session:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Clippy backend server running on http://localhost:${PORT}`);
   console.log(`🔗 Frontend should call: http://localhost:${PORT}/api/clippy-reaction`);

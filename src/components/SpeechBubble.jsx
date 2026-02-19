@@ -14,6 +14,11 @@ export default function SpeechBubble({
   onMicClick,
   isSpeaking,
   voiceSupported,
+  voiceConnected,
+  voiceConnecting,
+  isMuted,
+  userTranscript,
+  voiceError,
 }) {
   const [chatInput, setChatInput] = useState("");
   const bubbleColors = BUBBLE_COLORS[popupStyle] || BUBBLE_COLORS.normal;
@@ -52,6 +57,20 @@ export default function SpeechBubble({
         {message}
       </p>
 
+      {/* Live user transcript */}
+      {voiceEnabled && voiceConnected && userTranscript && (
+        <div style={{
+          marginTop: 8,
+          padding: "4px 8px",
+          fontSize: 12,
+          color: "rgba(255,255,255,0.5)",
+          fontStyle: "italic",
+          borderLeft: "2px solid rgba(156,39,176,0.4)",
+        }}>
+          You said: &ldquo;{userTranscript}&rdquo;
+        </div>
+      )}
+
       {/* Chat input */}
       <div style={{ marginTop: 12, display: "flex", gap: 6 }}>
         <input
@@ -60,21 +79,22 @@ export default function SpeechBubble({
           onChange={(e) => setChatInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={
-            isListening ? "Listening..." :
+            voiceConnecting ? "Connecting voice..." :
+            voiceConnected && !isMuted ? "Speak or type to Clippy..." :
             isChatLoading ? "Clippy is thinking..." :
             "Ask Clippy anything..."
           }
-          disabled={isChatLoading || isListening}
+          disabled={isChatLoading}
           style={{
             flex: 1,
             padding: "8px 12px",
             fontSize: 14,
             borderRadius: 8,
             border: isListening
-              ? "1px solid rgba(244,67,54,0.5)"
+              ? "1px solid rgba(76,175,80,0.5)"
               : "1px solid rgba(156,39,176,0.3)",
             background: isListening
-              ? "rgba(244,67,54,0.1)"
+              ? "rgba(76,175,80,0.1)"
               : "rgba(255,255,255,0.08)",
             color: "#E0E0E0",
             outline: "none",
@@ -84,22 +104,25 @@ export default function SpeechBubble({
         {voiceEnabled && (
           <button
             onClick={onMicClick}
-            disabled={isChatLoading}
+            disabled={!voiceConnected}
             style={{
               padding: "8px 12px",
               fontSize: 16,
               borderRadius: 8,
               border: "none",
-              background: isListening ? "#f44336" : "#9C27B0",
+              background: voiceConnecting ? "#666"
+                : isMuted ? "#f44336"
+                : isListening ? "#4CAF50"
+                : "#9C27B0",
               color: "white",
-              cursor: isChatLoading ? "default" : "pointer",
+              cursor: voiceConnected ? "pointer" : "default",
               transition: "all 0.2s",
               animation: isListening ? "micPulse 1s ease-in-out infinite" : "none",
               minWidth: 38,
-              opacity: isChatLoading ? 0.5 : 1,
+              opacity: voiceConnected ? 1 : 0.5,
             }}
           >
-            {isListening ? "\u23F9" : "\uD83C\uDFA4"}
+            {voiceConnecting ? "..." : isMuted ? "\uD83D\uDD07" : "\uD83C\uDFA4"}
           </button>
         )}
         <button
@@ -179,9 +202,19 @@ export default function SpeechBubble({
                 boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
               }} />
             </div>
-            {isSpeaking && (
+            {voiceConnecting && (
+              <span style={{ fontSize: 11, color: "#FFB74D", fontWeight: 600 }}>
+                Connecting...
+              </span>
+            )}
+            {isSpeaking && !voiceConnecting && (
               <span style={{ fontSize: 11, color: "#CE93D8", fontWeight: 600 }}>
                 Speaking...
+              </span>
+            )}
+            {voiceError && !voiceConnecting && (
+              <span style={{ fontSize: 11, color: "#f44336", fontWeight: 600 }}>
+                Voice error
               </span>
             )}
           </>
