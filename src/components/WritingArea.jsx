@@ -10,6 +10,7 @@ export default function WritingArea({
   documentName,
   onLoadDemoDraft,
   onStartBlankDraft,
+  editorMinHeight,
 }) {
   const wordCount = getWordCount(text);
   const charCount = getCharCount(text);
@@ -119,7 +120,7 @@ export default function WritingArea({
           placeholder="Start writing your assignment here... Clippy is watching. Always watching. 👀"
           style={{
             width: "100%",
-            minHeight: 400,
+            minHeight: editorMinHeight || 400,
             padding: 22,
             fontSize: 17,
             lineHeight: 1.8,

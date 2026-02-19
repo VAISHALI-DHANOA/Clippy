@@ -142,9 +142,19 @@ function parseCustomData(text) {
   );
 }
 
-export default function DashboardChart({ config, index, spreadsheetData, numCols, onUpdate, onRemove, highlightedRows, onHighlight, onClearHighlight }) {
+export default function DashboardChart({ config, index, spreadsheetData, numCols, onUpdate, onRemove, highlightedRows, onHighlight, onClearHighlight, chartSize = "standard" }) {
   const [customText, setCustomText] = useState("");
   const ct = config.chartType;
+  const dimsBySize = {
+    compact: { width: 300, height: 210, pieHeight: 200, heatHeight: 200 },
+    standard: { width: 430, height: 250, pieHeight: 235, heatHeight: 235 },
+    wide: { width: 700, height: 320, pieHeight: 285, heatHeight: 285 },
+  };
+  const dims = dimsBySize[chartSize] || dimsBySize.standard;
+  const chartWidth = dims.width;
+  const chartHeight = dims.height;
+  const pieHeight = dims.pieHeight;
+  const heatHeight = dims.heatHeight;
 
   const handleTypeChange = (e) => {
     const newType = e.target.value;
@@ -342,7 +352,7 @@ export default function DashboardChart({ config, index, spreadsheetData, numCols
       )}
 
       {/* Chart render */}
-      <div style={{ padding: 8, display: "flex", justifyContent: "center", minHeight: 180 }}>
+      <div style={{ padding: 8, display: "flex", justifyContent: "center", minHeight: chartHeight }}>
         {!chartData ? (
           <div style={{ padding: 20, color: "rgba(255,255,255,0.3)", fontSize: 13, fontStyle: "italic", textAlign: "center", alignSelf: "center" }}>
             Configure columns above to visualize data.
@@ -358,12 +368,12 @@ export default function DashboardChart({ config, index, spreadsheetData, numCols
 
           return (
             <>
-              {ct === "bar" && <BarChart labels={chartData.labels} series={chartData.series} width={320} height={220} highlightedRows={highlightedRows} onHighlight={onHighlight} onClearHighlight={onClearHighlight} xLabel={barLineX} yLabel={barLineY} />}
-              {ct === "line" && <LineChart labels={chartData.labels} series={chartData.series} width={320} height={220} highlightedRows={highlightedRows} onHighlight={onHighlight} onClearHighlight={onClearHighlight} xLabel={barLineX} yLabel={barLineY} />}
-              {ct === "scatter" && <ScatterChart data={chartData} width={320} height={220} highlightedRows={highlightedRows} onHighlight={onHighlight} onClearHighlight={onClearHighlight} xLabel={scatterX} yLabel={scatterY} />}
-              {ct === "pie" && <PieChart data={chartData} width={320} height={200} highlightedRows={highlightedRows} onHighlight={onHighlight} onClearHighlight={onClearHighlight} />}
-              {ct === "histogram" && <HistogramChart data={chartData} binCount={config.bins || 10} width={320} height={220} highlightedRows={highlightedRows} onHighlight={onHighlight} onClearHighlight={onClearHighlight} xLabel={histX} yLabel="Count" />}
-              {ct === "heatmap" && <HeatmapChart data={chartData} width={320} height={200} highlightedRows={highlightedRows} onHighlight={onHighlight} onClearHighlight={onClearHighlight} />}
+              {ct === "bar" && <BarChart labels={chartData.labels} series={chartData.series} width={chartWidth} height={chartHeight} highlightedRows={highlightedRows} onHighlight={onHighlight} onClearHighlight={onClearHighlight} xLabel={barLineX} yLabel={barLineY} />}
+              {ct === "line" && <LineChart labels={chartData.labels} series={chartData.series} width={chartWidth} height={chartHeight} highlightedRows={highlightedRows} onHighlight={onHighlight} onClearHighlight={onClearHighlight} xLabel={barLineX} yLabel={barLineY} />}
+              {ct === "scatter" && <ScatterChart data={chartData} width={chartWidth} height={chartHeight} highlightedRows={highlightedRows} onHighlight={onHighlight} onClearHighlight={onClearHighlight} xLabel={scatterX} yLabel={scatterY} />}
+              {ct === "pie" && <PieChart data={chartData} width={chartWidth} height={pieHeight} highlightedRows={highlightedRows} onHighlight={onHighlight} onClearHighlight={onClearHighlight} />}
+              {ct === "histogram" && <HistogramChart data={chartData} binCount={config.bins || 10} width={chartWidth} height={chartHeight} highlightedRows={highlightedRows} onHighlight={onHighlight} onClearHighlight={onClearHighlight} xLabel={histX} yLabel="Count" />}
+              {ct === "heatmap" && <HeatmapChart data={chartData} width={chartWidth} height={heatHeight} highlightedRows={highlightedRows} onHighlight={onHighlight} onClearHighlight={onClearHighlight} />}
             </>
           );
         })()}

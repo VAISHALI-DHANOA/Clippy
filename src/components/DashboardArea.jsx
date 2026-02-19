@@ -19,7 +19,7 @@ function defaultPanel() {
 
 const emptyFilters = { rowRange: { min: "", max: "" }, columnFilters: [] };
 
-export default function DashboardArea({ spreadsheetData, onHighlightChange, onPanelsChange }) {
+export default function DashboardArea({ spreadsheetData, onHighlightChange, onPanelsChange, compact = false }) {
   const [panels, setPanels] = useState([]);
   const [filters, setFilters] = useState(emptyFilters);
   const [highlightedRows, setHighlightedRows] = useState(new Set());
@@ -83,8 +83,10 @@ export default function DashboardArea({ spreadsheetData, onHighlightChange, onPa
     setPanels((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const chartSize = compact ? "compact" : panels.length === 1 ? "wide" : "standard";
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: "100%" }}>
       {/* Toolbar row */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button onClick={addPanel} style={{
@@ -114,8 +116,13 @@ export default function DashboardArea({ spreadsheetData, onHighlightChange, onPa
       {panels.length > 0 && (
         <div style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          gridTemplateColumns: compact
+            ? "1fr"
+            : panels.length === 1
+            ? "1fr"
+            : "repeat(auto-fit, minmax(420px, 1fr))",
           gap: 14,
+          alignItems: "stretch",
         }}>
           {panels.map((panel, i) => (
             <DashboardChart
@@ -129,6 +136,7 @@ export default function DashboardArea({ spreadsheetData, onHighlightChange, onPa
               highlightedRows={highlightedRows}
               onHighlight={handleHighlight}
               onClearHighlight={handleClearHighlight}
+              chartSize={chartSize}
             />
           ))}
         </div>

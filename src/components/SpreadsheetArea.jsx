@@ -476,7 +476,7 @@ export default function SpreadsheetArea({
     : "";
 
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
       <SpreadsheetToolbar
         selectedCell={selectedCell}
         cellRaw={selectedCellRaw}
@@ -503,6 +503,10 @@ export default function SpreadsheetArea({
       {/* Scrollable grid */}
       <div
         style={{
+          flex: 1,
+          minHeight: 0,
+          maxHeight: "calc(100vh - 330px)",
+          overflowY: "auto",
           overflowX: "auto",
           borderRadius: 10,
           border: "1px solid rgba(255,255,255,0.08)",

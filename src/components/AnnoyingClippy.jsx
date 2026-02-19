@@ -41,6 +41,9 @@ export default function AnnoyingClippy() {
   const [dashboardPanels, setDashboardPanels] = useState([]);
   // Voice state
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 1400
+  );
 
   const showMessage = useCallback((msg, expr = "sassy", style = "normal") => {
     setClippyMessage(msg);
@@ -73,6 +76,13 @@ export default function AnnoyingClippy() {
     error: voiceError,
   } = useRealtimeVoice();
   const voiceSupported = !!navigator.mediaDevices?.getUserMedia;
+  const isCompactLayout = viewportWidth < 1100;
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const getDocumentContext = useCallback(() => {
     if (activeTab === "writing") return text;
@@ -196,14 +206,14 @@ export default function AnnoyingClippy() {
   return (
     <div style={{
       minHeight: "100vh",
+      width: "100%",
       background: "linear-gradient(135deg, #050510 0%, #1a1640 50%, #12121e 100%)",
       fontFamily: "'Segoe UI', system-ui, sans-serif",
       display: "flex",
       flexDirection: "column",
-      alignItems: "center",
-      padding: "30px 20px",
+      padding: isCompactLayout ? "16px 12px 20px" : "18px 18px 22px",
       position: "relative",
-      overflow: "hidden",
+      overflowX: "hidden",
     }}>
       {/* Retro grid background */}
       <div style={{
@@ -215,9 +225,19 @@ export default function AnnoyingClippy() {
       }} />
 
       {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: 20, position: "relative", zIndex: 1 }}>
+      <div style={{
+        width: "100%",
+        marginBottom: 12,
+        position: "relative",
+        zIndex: 1,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 20,
+        flexWrap: "wrap",
+      }}>
         <h1 style={{
-          fontSize: 44,
+          fontSize: isCompactLayout ? 34 : 40,
           fontWeight: 800,
           color: "#fff",
           textShadow: "0 0 30px rgba(156,39,176,0.5), 0 0 60px rgba(156,39,176,0.2)",
@@ -226,104 +246,42 @@ export default function AnnoyingClippy() {
         }}>
           📎 Clippy 2.0
         </h1>
-        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, marginTop: 8, fontStyle: "italic" }}>
+        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 15, margin: 0, fontStyle: "italic" }}>
           Your uninvited AI study buddy • Now with 200% more unsolicited advice
         </p>
       </div>
 
-      {/* Tab bar */}
-      <div style={{
-        display: "flex",
-        gap: 0,
-        marginBottom: 20,
-        position: "relative",
-        zIndex: 1,
-      }}>
-        {TABS.map((tab, i) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            style={{
-              padding: "12px 32px",
-              fontSize: 16,
-              fontWeight: 600,
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderBottom: activeTab === tab.key
-                ? "2px solid #9C27B0"
-                : "1px solid rgba(255,255,255,0.1)",
-              background: activeTab === tab.key
-                ? "rgba(156,39,176,0.15)"
-                : "rgba(255,255,255,0.03)",
-              color: activeTab === tab.key
-                ? "#CE93D8"
-                : "rgba(255,255,255,0.4)",
-              cursor: "pointer",
-              borderRadius: i === 0 ? "10px 0 0 0" : i === TABS.length - 1 ? "0 10px 0 0" : 0,
-              backdropFilter: "blur(10px)",
-              transition: "all 0.2s",
-            }}
-          >
-            {tab.key === "writing" ? "📝 " : tab.key === "spreadsheet" ? "📊 " : "📈 "}{tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Main content row: content area + Clippy side panel */}
+      {/* Main content row */}
       <div style={{
         width: "100%",
-        maxWidth: 1200,
         display: "flex",
-        gap: 20,
-        alignItems: "flex-start",
+        flexDirection: isCompactLayout ? "column" : "row",
+        gap: isCompactLayout ? 12 : 16,
+        alignItems: "stretch",
+        flex: 1,
+        minHeight: 0,
         position: "relative",
         zIndex: 1,
       }}>
-        {/* Content area */}
-        <div style={{
-          flex: 1,
-          background: "rgba(0,0,0,0.35)",
-          borderRadius: 16,
-          border: "1px solid rgba(255,255,255,0.06)",
-          backdropFilter: "blur(10px)",
-          padding: 24,
-          minWidth: 0,
-        }}>
-          {activeTab === "writing" ? (
-            <WritingArea
-              text={text}
-              onTextChange={handleTextChange}
-              suggestion={suggestion}
-              onAcceptSuggestion={handleAcceptSuggestion}
-              onClearSuggestion={clearSuggestion}
-              documentName={documentName}
-              onLoadDemoDraft={handleLoadDemoDraft}
-              onStartBlankDraft={handleStartBlankDraft}
-            />
-          ) : activeTab === "spreadsheet" ? (
-            <SpreadsheetArea
-              data={spreadsheetData}
-              onDataChange={setSpreadsheetData}
-              selectedCell={selectedCell}
-              onCellSelect={setSelectedCell}
-            />
-          ) : (
-            <DashboardArea
-              spreadsheetData={spreadsheetData}
-              onPanelsChange={setDashboardPanels}
-            />
-          )}
-        </div>
-
         {/* Clippy side panel */}
         {!isMinimized ? (
           <div style={{
-            width: 320,
+            width: isCompactLayout ? "100%" : 320,
             flexShrink: 0,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             gap: 10,
-            animation: isBouncing ? "clippyBounce 0.6s ease" : isShaking ? "clippyShake 0.5s ease" : "clippyFloat 3s ease-in-out infinite",
+            alignSelf: "flex-start",
+            position: isCompactLayout ? "relative" : "sticky",
+            top: isCompactLayout ? "auto" : 16,
+            animation: isBouncing
+              ? "clippyBounce 0.6s ease"
+              : isShaking
+              ? "clippyShake 0.5s ease"
+              : isCompactLayout
+              ? "none"
+              : "clippyFloat 3s ease-in-out infinite",
           }}>
             {isVisible && (
               <SpeechBubble
@@ -375,9 +333,9 @@ export default function AnnoyingClippy() {
           <div
             onClick={handleMinimize}
             style={{
-              width: 60,
+              width: isCompactLayout ? "100%" : 60,
               height: 60,
-              borderRadius: "50%",
+              borderRadius: isCompactLayout ? 14 : "50%",
               background: "linear-gradient(135deg, #7B1FA2, #512DA8)",
               display: "flex",
               alignItems: "center",
@@ -392,6 +350,91 @@ export default function AnnoyingClippy() {
             📎
           </div>
         )}
+
+        {/* Workspace panel */}
+        <div style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}>
+          {/* Tab bar */}
+          <div style={{
+            display: "flex",
+            gap: 0,
+            position: "relative",
+            zIndex: 1,
+          }}>
+            {TABS.map((tab, i) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                style={{
+                  flex: isCompactLayout ? 1 : "0 0 auto",
+                  padding: isCompactLayout ? "11px 12px" : "12px 24px",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderBottom: activeTab === tab.key
+                    ? "2px solid #9C27B0"
+                    : "1px solid rgba(255,255,255,0.1)",
+                  background: activeTab === tab.key
+                    ? "rgba(156,39,176,0.15)"
+                    : "rgba(255,255,255,0.03)",
+                  color: activeTab === tab.key
+                    ? "#CE93D8"
+                    : "rgba(255,255,255,0.4)",
+                  cursor: "pointer",
+                  borderRadius: i === 0 ? "10px 0 0 0" : i === TABS.length - 1 ? "0 10px 0 0" : 0,
+                  backdropFilter: "blur(10px)",
+                  transition: "all 0.2s",
+                }}
+              >
+                {tab.key === "writing" ? "📝 " : tab.key === "spreadsheet" ? "📊 " : "📈 "}{tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Active workspace */}
+          <div style={{
+            flex: 1,
+            minHeight: isCompactLayout ? 480 : "calc(100vh - 165px)",
+            background: "rgba(0,0,0,0.35)",
+            borderRadius: 16,
+            border: "1px solid rgba(255,255,255,0.06)",
+            backdropFilter: "blur(10px)",
+            padding: isCompactLayout ? 14 : 22,
+            overflow: "hidden",
+          }}>
+            {activeTab === "writing" ? (
+              <WritingArea
+                text={text}
+                onTextChange={handleTextChange}
+                suggestion={suggestion}
+                onAcceptSuggestion={handleAcceptSuggestion}
+                onClearSuggestion={clearSuggestion}
+                documentName={documentName}
+                onLoadDemoDraft={handleLoadDemoDraft}
+                onStartBlankDraft={handleStartBlankDraft}
+                editorMinHeight={isCompactLayout ? 340 : "calc(100vh - 275px)"}
+              />
+            ) : activeTab === "spreadsheet" ? (
+              <SpreadsheetArea
+                data={spreadsheetData}
+                onDataChange={setSpreadsheetData}
+                selectedCell={selectedCell}
+                onCellSelect={setSelectedCell}
+              />
+            ) : (
+              <DashboardArea
+                spreadsheetData={spreadsheetData}
+                onPanelsChange={setDashboardPanels}
+                compact={isCompactLayout}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
       <style>{ANIMATION_STYLES}</style>
