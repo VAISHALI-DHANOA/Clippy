@@ -503,6 +503,11 @@ app.post('/api/realtime-session', async (req, res) => {
   }
 });
 
+// Health check endpoint for Render
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
 // Serve built frontend from the same server in production
 if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, 'dist');

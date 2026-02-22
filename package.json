@@ -3,10 +3,14 @@
   "version": "2.0.0",
   "description": "Annoying Clippy assistant for students - Now with AI reactions!",
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "server": "node server.js",
-    "start": "concurrently \"npm run server\" \"npm run dev\"",
+    "start": "node server.js",
+    "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
     "build": "vite build",
     "preview": "vite preview",
     "simple": "python3 -m http.server 8000"
